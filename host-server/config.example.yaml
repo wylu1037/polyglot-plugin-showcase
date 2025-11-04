@@ -1,0 +1,17 @@
+# Example configuration for development environment
+
+server:
+  host: localhost
+  port: 3000
+  debug: true
+
+plugin:
+  dir: ./plugins
+  protocol: netrpc
+  auto_load:
+    - hello-plugin
+
+log:
+  level: debug
+  format: console
+  output: stdout
