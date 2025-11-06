@@ -48,3 +48,10 @@ Thumbs.db
 # Environment files
 .env
 .env.local
+
+# Frontend
+host-web/dist/
+host-web/.env.local
+host-web/.env.development.local
+host-web/.env.production.local
+host-web/src/api/generated/
