@@ -10,9 +10,10 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	Server ServerConfig `mapstructure:"server"`
-	Plugin PluginConfig `mapstructure:"plugin"`
-	Log    LogConfig    `mapstructure:"log"`
+	Server   ServerConfig   `mapstructure:"server"`
+	Database DatabaseConfig `mapstructure:"database"`
+	Plugin   PluginConfig   `mapstructure:"plugin"`
+	Log      LogConfig      `mapstructure:"log"`
 }
 
 // ServerConfig holds server-related configuration
@@ -23,6 +24,21 @@ type ServerConfig struct {
 	WriteTimeout    time.Duration `mapstructure:"write_timeout"`
 	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout"`
 	Debug           bool          `mapstructure:"debug"`
+}
+
+// DatabaseConfig holds database-related configuration
+type DatabaseConfig struct {
+	Host            string        `mapstructure:"host"`
+	Port            int           `mapstructure:"port"`
+	User            string        `mapstructure:"user"`
+	Password        string        `mapstructure:"password"`
+	Database        string        `mapstructure:"database"`
+	SSLMode         string        `mapstructure:"ssl_mode"`           // disable, require, verify-ca, verify-full
+	MaxOpenConns    int           `mapstructure:"max_open_conns"`     // Maximum number of open connections
+	MaxIdleConns    int           `mapstructure:"max_idle_conns"`     // Maximum number of idle connections
+	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`  // Maximum lifetime of a connection
+	ConnMaxIdleTime time.Duration `mapstructure:"conn_max_idle_time"` // Maximum idle time of a connection
+	LogLevel        string        `mapstructure:"log_level"`          // silent, error, warn, info
 }
 
 // PluginConfig holds plugin-related configuration
@@ -87,6 +103,30 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("invalid server port: %d", c.Server.Port)
 	}
 
+	// Validate database config
+	if c.Database.Host == "" {
+		return fmt.Errorf("database host is required")
+	}
+	if c.Database.Port < 1 || c.Database.Port > 65535 {
+		return fmt.Errorf("invalid database port: %d", c.Database.Port)
+	}
+	if c.Database.User == "" {
+		return fmt.Errorf("database user is required")
+	}
+	if c.Database.Database == "" {
+		return fmt.Errorf("database name is required")
+	}
+
+	validSSLModes := map[string]bool{
+		"disable":     true,
+		"require":     true,
+		"verify-ca":   true,
+		"verify-full": true,
+	}
+	if !validSSLModes[c.Database.SSLMode] {
+		return fmt.Errorf("invalid database ssl_mode: %s", c.Database.SSLMode)
+	}
+
 	// Validate plugin protocol
 	if c.Plugin.Protocol != "grpc" && c.Plugin.Protocol != "netrpc" {
 		return fmt.Errorf("invalid plugin protocol: %s (must be 'grpc' or 'netrpc')", c.Plugin.Protocol)
@@ -109,4 +149,17 @@ func (c *Config) Validate() error {
 // GetServerAddr returns the server address in "host:port" format
 func (c *Config) GetServerAddr() string {
 	return fmt.Sprintf("%s:%d", c.Server.Host, c.Server.Port)
+}
+
+// GetDatabaseDSN returns the PostgreSQL connection string
+func (c *Config) GetDatabaseDSN() string {
+	return fmt.Sprintf(
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		c.Database.Host,
+		c.Database.Port,
+		c.Database.User,
+		c.Database.Password,
+		c.Database.Database,
+		c.Database.SSLMode,
+	)
 }
