@@ -38,3 +38,27 @@ dev: ## 同时运行前后端开发服务器 (需要两个终端)
 
 build: server-build web-build ## 构建前后端
 
+# 插件命令
+plugin-proto: ## 使用 buf 生成插件 protobuf 代码
+	cd proto && buf generate
+
+plugin-proto-lint: ## 检查 proto 文件
+	cd proto && buf lint
+
+plugin-proto-breaking: ## 检查 proto 文件的破坏性变更
+	cd proto && buf breaking --against '.git#branch=main'
+
+plugin-desensitization: ## 构建数据脱敏插件
+	cd plugins/desensitization && go build -o ../../host-server/bin/plugins/desensitization
+
+plugin-build: plugin-desensitization ## 构建所有插件
+
+plugin-clean: ## 清理插件二进制文件
+	rm -rf host-server/bin/plugins/*
+
+plugin-test: ## 运行插件测试
+	cd plugins/desensitization/impl && go test -v
+
+plugin-example: ## 运行插件示例
+	cd plugins/desensitization/example && go run main.go
+

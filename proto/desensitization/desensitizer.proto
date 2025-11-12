@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package desensitization;
+
+option go_package = "github.com/wylu1037/polyglot-plugin-showcase/proto/desensitization";
+
+// Desensitizer service definition
+service Desensitizer {
+  rpc DesensitizeName(DesensitizeRequest) returns (DesensitizeResponse);
+  rpc DesensitizeTelNo(DesensitizeRequest) returns (DesensitizeResponse);
+  rpc DesensitizeIDNumber(DesensitizeRequest) returns (DesensitizeResponse);
+  rpc DesensitizeEmail(DesensitizeRequest) returns (DesensitizeResponse);
+  rpc DesensitizeBankCard(DesensitizeRequest) returns (DesensitizeResponse);
+  rpc DesensitizeAddress(DesensitizeRequest) returns (DesensitizeResponse);
+}
+
+message DesensitizeRequest {
+  string data = 1;
+}
+
+message DesensitizeResponse {
+  string result = 1;
+}
+

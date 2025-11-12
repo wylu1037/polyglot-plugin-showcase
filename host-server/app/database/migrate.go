@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/wylu1037/polyglot-plugin-host-server/app/database/models"
 	"gorm.io/gorm"
 )
 
@@ -12,10 +13,10 @@ func AutoMigrate(db *gorm.DB) error {
 	log.Println("Running database migrations...")
 
 	models := []any{
-		// Add models here
+		&models.PluginStore{},
+		// Add other models here
 	}
 
-	// Run migrations
 	if err := db.AutoMigrate(models...); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}

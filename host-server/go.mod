@@ -4,6 +4,7 @@ go 1.25.3
 
 require (
 	github.com/labstack/echo/v4 v4.13.4
+	github.com/samber/lo v1.52.0
 	github.com/spf13/viper v1.21.0
 	go.uber.org/fx v1.24.0
 	gorm.io/driver/postgres v1.6.0
