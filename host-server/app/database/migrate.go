@@ -8,13 +8,11 @@ import (
 	"gorm.io/gorm"
 )
 
-// AutoMigrate runs automatic migration for all models
 func AutoMigrate(db *gorm.DB) error {
 	log.Println("Running database migrations...")
 
 	models := []any{
-		&models.PluginStore{},
-		// Add other models here
+		&models.Plugin{},
 	}
 
 	if err := db.AutoMigrate(models...); err != nil {

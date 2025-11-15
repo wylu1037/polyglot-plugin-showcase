@@ -2,18 +2,19 @@ package main
 
 import (
 	"github.com/hashicorp/go-plugin"
-	"github.com/wylu1037/polyglot-plugin-showcase/plugins/desensitization/impl"
-	"github.com/wylu1037/polyglot-plugin-showcase/proto/desensitization"
+	"github.com/wylu1037/polyglot-plugin-showcase/plugins/desensitization/adapter"
+	"github.com/wylu1037/polyglot-plugin-showcase/proto/common"
 )
 
 func main() {
+	// Use the common plugin interface with type-specific interface name
 	plugin.Serve(&plugin.ServeConfig{
-		HandshakeConfig: desensitization.Handshake,
+		HandshakeConfig: common.Handshake,
 		Plugins: map[string]plugin.Plugin{
-			"desensitizer": &desensitization.DesensitzerGRPCPlugin{Impl: &impl.DesensitzerImpl{}},
+			"desensitization": &common.PluginGRPCPlugin{
+				Impl: adapter.NewDesensitizationAdapter(),
+			},
 		},
-
-		// A non-nil value here enables gRPC serving for this plugin...
 		GRPCServer: plugin.DefaultGRPCServer,
 	})
 }

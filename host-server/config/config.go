@@ -47,6 +47,7 @@ type PluginConfig struct {
 	Protocol         string        `mapstructure:"protocol"` // "grpc" or "netrpc"
 	HandshakeTimeout time.Duration `mapstructure:"handshake_timeout"`
 	StartupTimeout   time.Duration `mapstructure:"startup_timeout"`
+	DownloadTimeout  time.Duration `mapstructure:"download_timeout"`
 	AutoLoad         []string      `mapstructure:"auto_load"` // Plugin names to load on startup
 }
 
