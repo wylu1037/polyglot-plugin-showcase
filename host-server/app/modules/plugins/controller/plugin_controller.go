@@ -5,8 +5,8 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
+	"github.com/wylu1037/polyglot-plugin-host-server/app/common"
 	"github.com/wylu1037/polyglot-plugin-host-server/app/modules/plugins/request"
-	"github.com/wylu1037/polyglot-plugin-host-server/app/modules/plugins/response"
 	"github.com/wylu1037/polyglot-plugin-host-server/app/modules/plugins/service"
 )
 
@@ -33,17 +33,11 @@ func NewPluginController(service service.PluginService) PluginController {
 func (ctrl *pluginController) InstallPlugin(c echo.Context) error {
 	var req request.InstallPluginRequest
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, response.Response{
-			Success: false,
-			Error:   "Invalid request body",
-		})
+		return common.ErrBadRequest.WithDetails("Invalid request body format").WithInternal(err)
 	}
 
 	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, response.Response{
-			Success: false,
-			Error:   err.Error(),
-		})
+		return common.ErrValidationFailed.WithDetails(err.Error()).WithInternal(err)
 	}
 
 	plugin, err := ctrl.service.InstallPlugin(&service.InstallPluginRequest{
@@ -58,17 +52,10 @@ func (ctrl *pluginController) InstallPlugin(c echo.Context) error {
 	})
 
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, response.Response{
-			Success: false,
-			Error:   err.Error(),
-		})
+		return common.ErrPluginInstallFailed.WithInternal(err)
 	}
 
-	return c.JSON(http.StatusCreated, response.Response{
-		Success: true,
-		Message: "Plugin installed successfully",
-		Data:    plugin,
-	})
+	return c.JSON(http.StatusCreated, plugin)
 }
 
 func (ctrl *pluginController) ListPlugins(c echo.Context) error {
@@ -84,62 +71,40 @@ func (ctrl *pluginController) ListPlugins(c echo.Context) error {
 
 	plugins, err := ctrl.service.ListPlugins(filters)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, response.Response{
-			Success: false,
-			Error:   err.Error(),
-		})
+		return common.ErrInternalServer.WithDetails("Failed to list plugins").WithInternal(err)
 	}
 
-	return c.JSON(http.StatusOK, response.Response{
-		Success: true,
-		Data:    plugins,
-	})
+	return c.JSON(http.StatusOK, plugins)
 }
 
 func (ctrl *pluginController) GetPlugin(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, response.Response{
-			Success: false,
-			Error:   "Invalid plugin ID",
-		})
+		return common.ErrBadRequest.WithDetails("Invalid plugin ID format").WithInternal(err)
 	}
 
 	plugin, err := ctrl.service.GetPluginInfo(uint(id))
 	if err != nil {
-		return c.JSON(http.StatusNotFound, response.Response{
-			Success: false,
-			Error:   err.Error(),
-		})
+		return common.ErrPluginNotFound.WithInternal(err)
 	}
 
-	return c.JSON(http.StatusOK, response.Response{
-		Success: true,
-		Data:    plugin,
-	})
+	return c.JSON(http.StatusOK, plugin)
 }
 
 func (ctrl *pluginController) ActivatePlugin(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, response.Response{
-			Success: false,
-			Error:   "Invalid plugin ID",
-		})
+		return common.ErrBadRequest.WithDetails("Invalid plugin ID format").WithInternal(err)
 	}
 
 	if err := ctrl.service.ActivatePlugin(uint(id)); err != nil {
-		return c.JSON(http.StatusInternalServerError, response.Response{
-			Success: false,
-			Error:   err.Error(),
-		})
+		return common.ErrPluginActivateFailed.WithInternal(err)
 	}
 
-	return c.JSON(http.StatusOK, response.Response{
-		Success: true,
-		Message: "Plugin activated successfully",
+	return c.JSON(http.StatusOK, map[string]string{
+		"message": "Plugin activated successfully",
 	})
 }
 
@@ -147,22 +112,15 @@ func (ctrl *pluginController) DeactivatePlugin(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, response.Response{
-			Success: false,
-			Error:   "Invalid plugin ID",
-		})
+		return common.ErrBadRequest.WithDetails("Invalid plugin ID format").WithInternal(err)
 	}
 
 	if err := ctrl.service.DeactivatePlugin(uint(id)); err != nil {
-		return c.JSON(http.StatusInternalServerError, response.Response{
-			Success: false,
-			Error:   err.Error(),
-		})
+		return common.ErrPluginDeactivateFailed.WithInternal(err)
 	}
 
-	return c.JSON(http.StatusOK, response.Response{
-		Success: true,
-		Message: "Plugin deactivated successfully",
+	return c.JSON(http.StatusOK, map[string]string{
+		"message": "Plugin deactivated successfully",
 	})
 }
 
@@ -170,22 +128,15 @@ func (ctrl *pluginController) UninstallPlugin(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, response.Response{
-			Success: false,
-			Error:   "Invalid plugin ID",
-		})
+		return common.ErrBadRequest.WithDetails("Invalid plugin ID format").WithInternal(err)
 	}
 
 	if err := ctrl.service.UninstallPlugin(uint(id)); err != nil {
-		return c.JSON(http.StatusInternalServerError, response.Response{
-			Success: false,
-			Error:   err.Error(),
-		})
+		return common.ErrPluginUninstallFailed.WithInternal(err)
 	}
 
-	return c.JSON(http.StatusOK, response.Response{
-		Success: true,
-		Message: "Plugin uninstalled successfully",
+	return c.JSON(http.StatusOK, map[string]string{
+		"message": "Plugin uninstalled successfully",
 	})
 }
 
@@ -193,25 +144,16 @@ func (ctrl *pluginController) CallPlugin(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, response.Response{
-			Success: false,
-			Error:   "Invalid plugin ID",
-		})
+		return common.ErrBadRequest.WithDetails("Invalid plugin ID format").WithInternal(err)
 	}
 
 	var req request.CallPluginRequest
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, response.Response{
-			Success: false,
-			Error:   "Invalid request body",
-		})
+		return common.ErrBadRequest.WithDetails("Invalid request body format").WithInternal(err)
 	}
 
 	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, response.Response{
-			Success: false,
-			Error:   err.Error(),
-		})
+		return common.ErrValidationFailed.WithDetails(err.Error()).WithInternal(err)
 	}
 
 	result, err := ctrl.service.CallPlugin(uint(id), &service.CallPluginRequest{
@@ -220,14 +162,8 @@ func (ctrl *pluginController) CallPlugin(c echo.Context) error {
 	})
 
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, response.Response{
-			Success: false,
-			Error:   err.Error(),
-		})
+		return common.ErrPluginCallFailed.WithInternal(err)
 	}
 
-	return c.JSON(http.StatusOK, response.Response{
-		Success: true,
-		Data:    result,
-	})
+	return c.JSON(http.StatusOK, result)
 }

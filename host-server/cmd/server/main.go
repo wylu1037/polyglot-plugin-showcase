@@ -11,30 +11,17 @@ import (
 
 func main() {
 	app := fx.New(
-		// Configuration
-		fx.Provide(func() (*config.Config, error) {
-			return config.Load("")
-		}),
-
-		// Database
+		fx.Provide(config.Load),
 		fx.Provide(database.NewDatabase),
-		fx.Invoke(database.AutoMigrate),
-
-		// Echo Web Server
-		fx.Provide(bootstrap.NewEchoApp),
-
-		// Plugin System
 		fx.Provide(
 			plugin.ProvideRegistry,
 			plugin.ProvideManager,
 			plugin.ProvidePluginDir,
 		),
-		fx.Invoke(plugin.AutoLoadPlugins),
-
-		// Modules
+		fx.Provide(bootstrap.NewEchoApp),
 		plugins.Module,
-
-		// Start Web Server
+		fx.Invoke(database.AutoMigrate),
+		fx.Invoke(plugin.AutoLoadPlugins),
 		fx.Invoke(bootstrap.Start),
 	)
 

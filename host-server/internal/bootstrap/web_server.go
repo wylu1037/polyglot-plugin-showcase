@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/wylu1037/polyglot-plugin-host-server/app/common"
 	"github.com/wylu1037/polyglot-plugin-host-server/config"
 	"go.uber.org/fx"
 )
@@ -19,7 +20,6 @@ type WebServerParams struct {
 func Start(lc fx.Lifecycle, p WebServerParams) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			// Start server in goroutine
 			go func() {
 				addr := p.Config.GetServerAddr()
 				fmt.Printf("Starting server on %s\n", addr)
@@ -39,8 +39,11 @@ func Start(lc fx.Lifecycle, p WebServerParams) {
 func NewEchoApp(config *config.Config) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-	e.Use(middleware.CORS())
+
+	// Set custom error handler
+	e.HTTPErrorHandler = common.CustomHTTPErrorHandler
+
+	e.Use(middleware.Logger(), middleware.Recover(), middleware.CORS())
+
 	return e
 }
