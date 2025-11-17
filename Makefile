@@ -11,6 +11,12 @@ server-dev: ## 运行后端开发服务器
 server-build: ## 构建后端二进制文件
 	cd host-server && go build -o bin/server cmd/server/main.go
 
+swagger: ## 生成 Swagger/OpenAPI 文档
+	cd host-server && swag init -g cmd/server/main.go -o docs
+
+swagger-fmt: ## 格式化 Swagger 注释
+	cd host-server && swag fmt
+
 # 前端命令
 web-install: ## 安装前端依赖
 	cd host-web && pnpm install

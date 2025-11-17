@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/wylu1037/polyglot-plugin-host-server/app/common"
+	_ "github.com/wylu1037/polyglot-plugin-host-server/app/database/models"
 	"github.com/wylu1037/polyglot-plugin-host-server/app/modules/plugins/request"
 	"github.com/wylu1037/polyglot-plugin-host-server/app/modules/plugins/service"
 )
@@ -30,6 +31,17 @@ func NewPluginController(service service.PluginService) PluginController {
 	}
 }
 
+// InstallPlugin godoc
+// @Summary      Install a new plugin
+// @Description  Install a plugin from a download URL
+// @Tags         plugins
+// @Accept       json
+// @Produce      json
+// @Param        request body request.InstallPluginRequest true "Plugin installation request"
+// @Success      201 {object} models.Plugin
+// @Failure      400 {object} common.AppError
+// @Failure      500 {object} common.AppError
+// @Router       /api/plugins/install [post]
 func (ctrl *pluginController) InstallPlugin(c echo.Context) error {
 	var req request.InstallPluginRequest
 	if err := c.Bind(&req); err != nil {
@@ -58,6 +70,17 @@ func (ctrl *pluginController) InstallPlugin(c echo.Context) error {
 	return c.JSON(http.StatusCreated, plugin)
 }
 
+// ListPlugins godoc
+// @Summary      List all plugins
+// @Description  Get a list of all installed plugins with optional filters
+// @Tags         plugins
+// @Accept       json
+// @Produce      json
+// @Param        type   query string false "Filter by plugin type"
+// @Param        status query string false "Filter by plugin status"
+// @Success      200 {array} models.Plugin
+// @Failure      500 {object} common.AppError
+// @Router       /api/plugins [get]
 func (ctrl *pluginController) ListPlugins(c echo.Context) error {
 	filters := make(map[string]any)
 
@@ -77,6 +100,17 @@ func (ctrl *pluginController) ListPlugins(c echo.Context) error {
 	return c.JSON(http.StatusOK, plugins)
 }
 
+// GetPlugin godoc
+// @Summary      Get plugin details
+// @Description  Get detailed information about a specific plugin by ID
+// @Tags         plugins
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "Plugin ID"
+// @Success      200 {object} models.Plugin
+// @Failure      400 {object} common.AppError
+// @Failure      404 {object} common.AppError
+// @Router       /api/plugins/{id} [get]
 func (ctrl *pluginController) GetPlugin(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
@@ -92,6 +126,17 @@ func (ctrl *pluginController) GetPlugin(c echo.Context) error {
 	return c.JSON(http.StatusOK, plugin)
 }
 
+// ActivatePlugin godoc
+// @Summary      Activate a plugin
+// @Description  Activate a previously installed plugin
+// @Tags         plugins
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "Plugin ID"
+// @Success      200 {object} map[string]string
+// @Failure      400 {object} common.AppError
+// @Failure      500 {object} common.AppError
+// @Router       /api/plugins/{id}/activate [post]
 func (ctrl *pluginController) ActivatePlugin(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
@@ -108,6 +153,17 @@ func (ctrl *pluginController) ActivatePlugin(c echo.Context) error {
 	})
 }
 
+// DeactivatePlugin godoc
+// @Summary      Deactivate a plugin
+// @Description  Deactivate an active plugin
+// @Tags         plugins
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "Plugin ID"
+// @Success      200 {object} map[string]string
+// @Failure      400 {object} common.AppError
+// @Failure      500 {object} common.AppError
+// @Router       /api/plugins/{id}/deactivate [post]
 func (ctrl *pluginController) DeactivatePlugin(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
@@ -124,6 +180,17 @@ func (ctrl *pluginController) DeactivatePlugin(c echo.Context) error {
 	})
 }
 
+// UninstallPlugin godoc
+// @Summary      Uninstall a plugin
+// @Description  Remove a plugin from the system
+// @Tags         plugins
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "Plugin ID"
+// @Success      200 {object} map[string]string
+// @Failure      400 {object} common.AppError
+// @Failure      500 {object} common.AppError
+// @Router       /api/plugins/{id} [delete]
 func (ctrl *pluginController) UninstallPlugin(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
@@ -140,6 +207,18 @@ func (ctrl *pluginController) UninstallPlugin(c echo.Context) error {
 	})
 }
 
+// CallPlugin godoc
+// @Summary      Call a plugin method
+// @Description  Execute a specific method on an active plugin
+// @Tags         plugins
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "Plugin ID"
+// @Param        request body request.CallPluginRequest true "Plugin call request"
+// @Success      200 {object} map[string]interface{}
+// @Failure      400 {object} common.AppError
+// @Failure      500 {object} common.AppError
+// @Router       /api/plugins/{id}/call [post]
 func (ctrl *pluginController) CallPlugin(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)

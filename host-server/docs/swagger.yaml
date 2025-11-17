@@ -1,0 +1,403 @@
+basePath: /
+definitions:
+  common.AppError:
+    properties:
+      details:
+        description: Additional details
+        type: string
+      error_code:
+        description: Machine-readable error code
+        type: string
+      message:
+        description: Human-readable error message
+        type: string
+      path:
+        description: Request path
+        type: string
+      success:
+        description: Always false for errors
+        type: boolean
+      timestamp:
+        description: Unix timestamp
+        type: integer
+    type: object
+  models.JSONMap:
+    additionalProperties: {}
+    type: object
+  models.Plugin:
+    properties:
+      binary_path:
+        type: string
+      checksum:
+        type: string
+      checksum_type:
+        type: string
+      config:
+        $ref: '#/definitions/models.JSONMap'
+      created_at:
+        type: integer
+      description:
+        type: string
+      download_url:
+        type: string
+      id:
+        type: integer
+      last_used_at:
+        type: integer
+      metadata:
+        $ref: '#/definitions/models.JSONMap'
+      name:
+        type: string
+      protocol:
+        $ref: '#/definitions/models.PluginProtocol'
+      protocol_version:
+        type: integer
+      status:
+        $ref: '#/definitions/models.PluginStatus'
+      type:
+        $ref: '#/definitions/models.PluginType'
+      updated_at:
+        type: integer
+      version:
+        type: string
+    type: object
+  models.PluginProtocol:
+    enum:
+    - grpc
+    - net-rpc
+    type: string
+    x-enum-comments:
+      PluginProtocolGRPC: gRPC 协议
+      PluginProtocolNetRPC: net/rpc 协议
+    x-enum-descriptions:
+    - gRPC 协议
+    - net/rpc 协议
+    x-enum-varnames:
+    - PluginProtocolGRPC
+    - PluginProtocolNetRPC
+  models.PluginStatus:
+    enum:
+    - active
+    - inactive
+    - disabled
+    - error
+    - installing
+    type: string
+    x-enum-comments:
+      PluginStatusActive: 激活
+      PluginStatusDisabled: 已禁用
+      PluginStatusError: 错误状态
+      PluginStatusInactive: 未激活
+      PluginStatusInstalling: 安装中
+    x-enum-descriptions:
+    - 激活
+    - 未激活
+    - 已禁用
+    - 错误状态
+    - 安装中
+    x-enum-varnames:
+    - PluginStatusActive
+    - PluginStatusInactive
+    - PluginStatusDisabled
+    - PluginStatusError
+    - PluginStatusInstalling
+  models.PluginType:
+    enum:
+    - desensitization
+    - encryption
+    - validation
+    - transform
+    - custom
+    type: string
+    x-enum-comments:
+      PluginTypeCustom: 自定义
+      PluginTypeDesensitization: 数据脱敏
+      PluginTypeEncryption: 加密
+      PluginTypeTransform: 数据转换
+      PluginTypeValidation: 验证
+    x-enum-descriptions:
+    - 数据脱敏
+    - 加密
+    - 验证
+    - 数据转换
+    - 自定义
+    x-enum-varnames:
+    - PluginTypeDesensitization
+    - PluginTypeEncryption
+    - PluginTypeValidation
+    - PluginTypeTransform
+    - PluginTypeCustom
+  request.CallPluginRequest:
+    properties:
+      method:
+        type: string
+      params:
+        additionalProperties: {}
+        type: object
+    required:
+    - method
+    - params
+    type: object
+  request.InstallPluginRequest:
+    properties:
+      checksum:
+        type: string
+      config:
+        $ref: '#/definitions/models.JSONMap'
+      description:
+        type: string
+      download_url:
+        type: string
+      metadata:
+        $ref: '#/definitions/models.JSONMap'
+      name:
+        type: string
+      type:
+        $ref: '#/definitions/models.PluginType'
+      version:
+        type: string
+    required:
+    - download_url
+    - name
+    - type
+    - version
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: A plugin management system that supports dynamic loading and execution
+    of plugins
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Polyglot Plugin Host Server API
+  version: "1.0"
+paths:
+  /api/plugins:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all installed plugins with optional filters
+      parameters:
+      - description: Filter by plugin type
+        in: query
+        name: type
+        type: string
+      - description: Filter by plugin status
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Plugin'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.AppError'
+      summary: List all plugins
+      tags:
+      - plugins
+  /api/plugins/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a plugin from the system
+      parameters:
+      - description: Plugin ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.AppError'
+      summary: Uninstall a plugin
+      tags:
+      - plugins
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific plugin by ID
+      parameters:
+      - description: Plugin ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Plugin'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.AppError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.AppError'
+      summary: Get plugin details
+      tags:
+      - plugins
+  /api/plugins/{id}/activate:
+    post:
+      consumes:
+      - application/json
+      description: Activate a previously installed plugin
+      parameters:
+      - description: Plugin ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.AppError'
+      summary: Activate a plugin
+      tags:
+      - plugins
+  /api/plugins/{id}/call:
+    post:
+      consumes:
+      - application/json
+      description: Execute a specific method on an active plugin
+      parameters:
+      - description: Plugin ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Plugin call request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/request.CallPluginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.AppError'
+      summary: Call a plugin method
+      tags:
+      - plugins
+  /api/plugins/{id}/deactivate:
+    post:
+      consumes:
+      - application/json
+      description: Deactivate an active plugin
+      parameters:
+      - description: Plugin ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.AppError'
+      summary: Deactivate a plugin
+      tags:
+      - plugins
+  /api/plugins/install:
+    post:
+      consumes:
+      - application/json
+      description: Install a plugin from a download URL
+      parameters:
+      - description: Plugin installation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/request.InstallPluginRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Plugin'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.AppError'
+      summary: Install a new plugin
+      tags:
+      - plugins
+schemes:
+- http
+- https
+swagger: "2.0"
+tags:
+- description: Plugin management operations
+  name: plugins

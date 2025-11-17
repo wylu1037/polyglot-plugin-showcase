@@ -39,11 +39,8 @@ func Start(lc fx.Lifecycle, p WebServerParams) {
 func NewEchoApp(config *config.Config) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
-
-	// Set custom error handler
-	e.HTTPErrorHandler = common.CustomHTTPErrorHandler
-
+	e.HTTPErrorHandler = common.CustomHTTPErrorHandler // Set custom error handler
 	e.Use(middleware.Logger(), middleware.Recover(), middleware.CORS())
-
+	RegisterScalarDocs(e) // Register Scalar API documentation
 	return e
 }
