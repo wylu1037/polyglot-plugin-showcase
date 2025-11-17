@@ -7,8 +7,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Protocol version constants
-// Inspired by Terraform's plugin versioning strategy
 const (
 	// MinSupportedProtocolVersion is the minimum protocol version we support.
 	// Plugins with versions below this will be rejected.
@@ -21,6 +19,10 @@ const (
 	// MaxSupportedProtocolVersion is the maximum protocol version we support.
 	// This allows forward compatibility with newer plugins.
 	MaxSupportedProtocolVersion = 1
+
+	// This is a randomly generated 64-character hex string
+	// to prevent unauthorized processes from being mistakenly identified as plugins.
+	MagicCookieValue = "8f3e9a2d7c1b5e4f6a8d9c2b1e5f7a3d4c6b8e1f9a2d5c7b3e8f1a4d6c9b2e5f"
 )
 
 // Version history:
@@ -38,11 +40,9 @@ func IsProtocolVersionSupported(version int) bool {
 // IMPORTANT: The MagicCookie values should NEVER be changed after release,
 // as it would break compatibility with all existing plugins.
 var Handshake = plugin.HandshakeConfig{
-	ProtocolVersion: CurrentProtocolVersion,
-	MagicCookieKey:  "PLUGIN_INTERFACE",
-	// This is a randomly generated 64-character hex string (similar to Terraform's approach)
-	// to prevent unauthorized processes from being mistakenly identified as plugins.
-	MagicCookieValue: "8f3e9a2d7c1b5e4f6a8d9c2b1e5f7a3d4c6b8e1f9a2d5c7b3e8f1a4d6c9b2e5f",
+	ProtocolVersion:  CurrentProtocolVersion,
+	MagicCookieKey:   "PLUGIN_INTERFACE",
+	MagicCookieValue: MagicCookieValue,
 }
 
 // PluginMap is the map of plugins we can dispense
@@ -52,8 +52,8 @@ var PluginMap = map[string]plugin.Plugin{
 
 // PluginGRPCPlugin is the implementation of plugin.GRPCPlugin
 type PluginGRPCPlugin struct {
-	plugin.Plugin
-	Impl PluginInterface // Impl Injection
+	plugin.Plugin                 // Embedded plugin.Plugin to satisfy the interface
+	Impl          PluginInterface // Impl Injection
 }
 
 func (p *PluginGRPCPlugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) error {
