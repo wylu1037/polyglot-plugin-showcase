@@ -34,17 +34,25 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "plugins"
+                    "Plugins"
                 ],
                 "summary": "List all plugins",
                 "parameters": [
                     {
+                        "enum": [
+                            "grpc",
+                            "http"
+                        ],
                         "type": "string",
                         "description": "Filter by plugin type",
                         "name": "type",
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "active",
+                            "inactive"
+                        ],
                         "type": "string",
                         "description": "Filter by plugin status",
                         "name": "status",
@@ -61,10 +69,16 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/common.AppError"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     }
                 }
@@ -80,7 +94,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "plugins"
+                    "Plugins"
                 ],
                 "summary": "Install a new plugin",
                 "parameters": [
@@ -104,13 +118,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/common.AppError"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/common.AppError"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     }
                 }
@@ -126,11 +140,12 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "plugins"
+                    "Plugins"
                 ],
                 "summary": "Get plugin details",
                 "parameters": [
                     {
+                        "minimum": 1,
                         "type": "integer",
                         "description": "Plugin ID",
                         "name": "id",
@@ -148,13 +163,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/common.AppError"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/common.AppError"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     }
                 }
@@ -168,11 +183,12 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "plugins"
+                    "Plugins"
                 ],
                 "summary": "Uninstall a plugin",
                 "parameters": [
                     {
+                        "minimum": 1,
                         "type": "integer",
                         "description": "Plugin ID",
                         "name": "id",
@@ -193,13 +209,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/common.AppError"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/common.AppError"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     }
                 }
@@ -215,11 +231,12 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "plugins"
+                    "Plugins"
                 ],
                 "summary": "Activate a plugin",
                 "parameters": [
                     {
+                        "minimum": 1,
                         "type": "integer",
                         "description": "Plugin ID",
                         "name": "id",
@@ -240,13 +257,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/common.AppError"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/common.AppError"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     }
                 }
@@ -262,11 +279,12 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "plugins"
+                    "Plugins"
                 ],
                 "summary": "Call a plugin method",
                 "parameters": [
                     {
+                        "minimum": 1,
                         "type": "integer",
                         "description": "Plugin ID",
                         "name": "id",
@@ -294,13 +312,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/common.AppError"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/common.AppError"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     }
                 }
@@ -316,11 +334,12 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "plugins"
+                    "Plugins"
                 ],
                 "summary": "Deactivate a plugin",
                 "parameters": [
                     {
+                        "minimum": 1,
                         "type": "integer",
                         "description": "Plugin ID",
                         "name": "id",
@@ -341,13 +360,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/common.AppError"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/common.AppError"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     }
                 }
@@ -355,14 +374,14 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "common.AppError": {
+        "errors.AppError": {
             "type": "object",
             "properties": {
                 "details": {
                     "description": "Additional details",
                     "type": "string"
                 },
-                "error_code": {
+                "errorCode": {
                     "description": "Machine-readable error code",
                     "type": "string"
                 },
@@ -392,12 +411,6 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "binary_path": {
-                    "type": "string"
-                },
-                "checksum": {
-                    "type": "string"
-                },
-                "checksum_type": {
                     "type": "string"
                 },
                 "config": {
@@ -544,22 +557,19 @@ const docTemplate = `{
         "request.InstallPluginRequest": {
             "type": "object",
             "required": [
-                "download_url",
+                "downloadURL",
                 "name",
                 "type",
                 "version"
             ],
             "properties": {
-                "checksum": {
-                    "type": "string"
-                },
                 "config": {
                     "$ref": "#/definitions/models.JSONMap"
                 },
                 "description": {
                     "type": "string"
                 },
-                "download_url": {
+                "downloadURL": {
                     "type": "string"
                 },
                 "metadata": {

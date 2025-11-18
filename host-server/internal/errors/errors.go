@@ -1,4 +1,4 @@
-package common
+package errors
 
 import (
 	"fmt"
@@ -6,14 +6,13 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/samber/lo"
 )
 
-// AppError represents an application error with HTTP status code
-// It implements both error interface and can be directly serialized to JSON
 type AppError struct {
 	Success    bool   `json:"success"`             // Always false for errors
 	Message    string `json:"message"`             // Human-readable error message
-	ErrorCode  string `json:"error_code"`          // Machine-readable error code
+	ErrorCode  string `json:"errorCode"`           // Machine-readable error code
 	Details    string `json:"details,omitempty"`   // Additional details
 	Path       string `json:"path,omitempty"`      // Request path
 	Timestamp  int64  `json:"timestamp,omitempty"` // Unix timestamp
@@ -56,7 +55,6 @@ func (e *AppError) WithPath(path string) *AppError {
 	return e
 }
 
-// Common error codes
 const (
 	ErrCodeBadRequest         = "BAD_REQUEST"
 	ErrCodeUnauthorized       = "UNAUTHORIZED"
@@ -68,7 +66,6 @@ const (
 	ErrCodeServiceUnavailable = "SERVICE_UNAVAILABLE"
 )
 
-// Plugin-specific error codes
 const (
 	ErrCodePluginNotFound         = "PLUGIN_NOT_FOUND"
 	ErrCodePluginAlreadyExists    = "PLUGIN_ALREADY_EXISTS"
@@ -101,22 +98,16 @@ var (
 	ErrPluginCallFailed       = NewAppError(ErrCodePluginCallFailed, "Failed to call plugin", http.StatusInternalServerError)
 )
 
-// CustomHTTPErrorHandler is the global error handler for Echo
-func CustomHTTPErrorHandler(err error, c echo.Context) {
-	// Don't handle if response already committed
+func APIErrorHandler(err error, c echo.Context) {
 	if c.Response().Committed {
 		return
 	}
 
 	var appErr *AppError
 
-	// Check if it's an AppError
 	if e, ok := err.(*AppError); ok {
 		appErr = e
-		// Set path if not already set
-		if appErr.Path == "" {
-			appErr.Path = c.Request().URL.Path
-		}
+		appErr.Path = lo.Ternary(appErr.Path == "", c.Request().URL.Path, appErr.Path)
 	} else if he, ok := err.(*echo.HTTPError); ok {
 		// Handle Echo's HTTPError
 		appErr = &AppError{
@@ -140,10 +131,8 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 		}
 	}
 
-	// Log the error
 	c.Logger().Error(err)
 
-	// Send JSON response (AppError will be automatically serialized)
 	if err := c.JSON(appErr.HTTPStatus, appErr); err != nil {
 		c.Logger().Error(err)
 	}

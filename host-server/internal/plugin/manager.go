@@ -1,8 +1,6 @@
 package plugin
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -100,36 +98,6 @@ func (m *Manager) DownloadPlugin(url, destPath string) error {
 	if err := os.Rename(tempFile, destPath); err != nil {
 		os.Remove(tempFile)
 		return fmt.Errorf("failed to move plugin to destination: %w", err)
-	}
-
-	return nil
-}
-
-// VerifyChecksum verifies the checksum of a file
-func (m *Manager) VerifyChecksum(filePath, expectedChecksum string) error {
-	if expectedChecksum == "" {
-		return nil // Skip verification if no checksum provided
-	}
-
-	// Open file
-	file, err := os.Open(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to open file for checksum verification: %w", err)
-	}
-	defer file.Close()
-
-	// Calculate SHA256
-	hash := sha256.New()
-	if _, err := io.Copy(hash, file); err != nil {
-		return fmt.Errorf("failed to calculate checksum: %w", err)
-	}
-
-	// Get hex string
-	actualChecksum := hex.EncodeToString(hash.Sum(nil))
-
-	// Compare
-	if actualChecksum != expectedChecksum {
-		return fmt.Errorf("checksum mismatch: expected %s, got %s", expectedChecksum, actualChecksum)
 	}
 
 	return nil

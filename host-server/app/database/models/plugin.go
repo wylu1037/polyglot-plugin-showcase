@@ -15,7 +15,6 @@ const (
 	PluginStatusInstalling PluginStatus = "installing" // 安装中
 )
 
-// PluginType 插件类型
 type PluginType string
 
 const (
@@ -33,10 +32,8 @@ const (
 	PluginProtocolNetRPC PluginProtocol = "net-rpc" // net/rpc 协议
 )
 
-// JSONMap 用于存储 JSON 格式的配置
 type JSONMap map[string]any
 
-// Scan 实现 sql.Scanner 接口
 func (j *JSONMap) Scan(value any) error {
 	if value == nil {
 		*j = make(JSONMap)
@@ -49,7 +46,6 @@ func (j *JSONMap) Scan(value any) error {
 	return json.Unmarshal(bytes, j)
 }
 
-// Value 实现 driver.Valuer 接口
 func (j JSONMap) Value() (driver.Value, error) {
 	if j == nil {
 		return nil, nil
@@ -57,7 +53,6 @@ func (j JSONMap) Value() (driver.Value, error) {
 	return json.Marshal(j)
 }
 
-// Plugin 插件表模型
 type Plugin struct {
 	ID              uint           `gorm:"primarykey" json:"id"`
 	Name            string         `gorm:"type:varchar(100);not null;uniqueIndex:idx_name_version" json:"name"`
@@ -69,8 +64,6 @@ type Plugin struct {
 	DownloadURL     string         `gorm:"type:varchar(500)" json:"download_url"`
 	Protocol        PluginProtocol `gorm:"type:varchar(20);not null;default:'grpc'" json:"protocol"`
 	ProtocolVersion int            `gorm:"not null;default:1" json:"protocol_version"`
-	Checksum        string         `gorm:"type:varchar(64)" json:"checksum"`
-	ChecksumType    string         `gorm:"type:varchar(20);default:'sha256'" json:"checksum_type"`
 	Config          JSONMap        `gorm:"type:jsonb" json:"config"`
 	Metadata        JSONMap        `gorm:"type:jsonb" json:"metadata"`
 	CreatedAt       int64          `gorm:"autoCreateTime" json:"created_at"`

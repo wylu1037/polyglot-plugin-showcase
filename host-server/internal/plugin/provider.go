@@ -35,7 +35,6 @@ type AutoLoadPluginsParams struct {
 	Config    *config.Config
 }
 
-// AutoLoadPlugins automatically loads active plugins on startup
 func AutoLoadPlugins(p AutoLoadPluginsParams) {
 	p.Lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {

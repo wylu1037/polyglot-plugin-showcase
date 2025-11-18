@@ -8,34 +8,20 @@ import (
 
 	"github.com/wylu1037/polyglot-plugin-host-server/app/database/models"
 	"github.com/wylu1037/polyglot-plugin-host-server/app/modules/plugins/repository"
+	"github.com/wylu1037/polyglot-plugin-host-server/app/modules/plugins/request"
+	"github.com/wylu1037/polyglot-plugin-host-server/internal/errors"
 	"github.com/wylu1037/polyglot-plugin-host-server/internal/plugin"
 	"github.com/wylu1037/polyglot-plugin-showcase/proto/common"
 )
 
-type InstallPluginRequest struct {
-	DownloadURL string
-	Name        string
-	Version     string
-	Type        models.PluginType
-	Description string
-	Checksum    string
-	Config      models.JSONMap
-	Metadata    models.JSONMap
-}
-
-type CallPluginRequest struct {
-	Method string
-	Params map[string]any
-}
-
 type PluginService interface {
-	InstallPlugin(req *InstallPluginRequest) (*models.Plugin, error)
+	InstallPlugin(req *request.InstallPluginRequest) (*models.Plugin, error)
 	ActivatePlugin(id uint) error
 	DeactivatePlugin(id uint) error
 	UninstallPlugin(id uint) error
 	ListPlugins(filters map[string]any) ([]*models.Plugin, error)
 	GetPluginInfo(id uint) (*models.Plugin, error)
-	CallPlugin(id uint, req *CallPluginRequest) (any, error)
+	CallPlugin(id uint, req *request.CallPluginRequest) (any, error)
 }
 
 type pluginService struct {
@@ -56,7 +42,7 @@ func NewPluginService(
 	}
 }
 
-func (s *pluginService) InstallPlugin(req *InstallPluginRequest) (*models.Plugin, error) {
+func (s *pluginService) InstallPlugin(req *request.InstallPluginRequest) (*models.Plugin, error) {
 	// Check if plugin already exists
 	existing, err := s.repo.FindByNameAndVersion(req.Name, req.Version)
 	if err != nil {
@@ -80,8 +66,6 @@ func (s *pluginService) InstallPlugin(req *InstallPluginRequest) (*models.Plugin
 		DownloadURL:     req.DownloadURL,
 		Protocol:        models.PluginProtocolGRPC,
 		ProtocolVersion: 1,
-		Checksum:        req.Checksum,
-		ChecksumType:    "sha256",
 		Config:          req.Config,
 		Metadata:        req.Metadata,
 	}
@@ -94,15 +78,6 @@ func (s *pluginService) InstallPlugin(req *InstallPluginRequest) (*models.Plugin
 	if err := s.manager.DownloadPlugin(req.DownloadURL, binaryPath); err != nil {
 		s.repo.UpdateStatus(pluginRecord.ID, models.PluginStatusError)
 		return nil, fmt.Errorf("failed to download plugin: %w", err)
-	}
-
-	// Verify checksum if provided
-	if req.Checksum != "" {
-		if err := s.manager.VerifyChecksum(binaryPath, req.Checksum); err != nil {
-			s.repo.UpdateStatus(pluginRecord.ID, models.PluginStatusError)
-			os.Remove(binaryPath)
-			return nil, fmt.Errorf("checksum verification failed: %w", err)
-		}
 	}
 
 	// Update status to inactive (installed but not activated)
@@ -206,10 +181,10 @@ func (s *pluginService) GetPluginInfo(id uint) (*models.Plugin, error) {
 	return s.repo.FindByID(id)
 }
 
-func (s *pluginService) CallPlugin(id uint, req *CallPluginRequest) (any, error) {
+func (s *pluginService) CallPlugin(id uint, req *request.CallPluginRequest) (any, error) {
 	pluginRecord, err := s.repo.FindByID(id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find plugin: %w", err)
+		return nil, errors.ErrPluginNotFound.WithInternal(err)
 	}
 
 	if pluginRecord.Status != models.PluginStatusActive {
