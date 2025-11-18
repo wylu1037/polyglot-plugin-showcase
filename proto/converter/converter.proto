@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package converter;
+
+option go_package = "github.com/wylu1037/polyglot-plugin-showcase/proto/converter";
+
+// Converter service definition for data format conversion
+service Converter {
+  // ConvertToCSV converts JSON data to CSV format
+  rpc ConvertToCSV(ConvertRequest) returns (ConvertResponse);
+
+  // ConvertToTXT converts JSON data to plain text format
+  rpc ConvertToTXT(ConvertRequest) returns (ConvertResponse);
+
+  // ConvertToHTML converts JSON data to HTML table format
+  rpc ConvertToHTML(ConvertRequest) returns (ConvertResponse);
+}
+
+message ConvertRequest {
+  string data = 1;// JSON data to convert
+  map<string, string> options = 2;// Optional conversion options
+}
+
+message ConvertResponse {
+  string result = 1;// Converted data
+}
+
