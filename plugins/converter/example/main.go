@@ -3,12 +3,71 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
 
-	"github.com/wylu1037/polyglot-plugin-showcase/plugins/converter/impl"
+	"github.com/hashicorp/go-plugin"
+	"github.com/wylu1037/polyglot-plugin-showcase/proto/common"
 )
 
+const RUN_PATH = "/Users/wenyanglu/Workspace/github/polyglot-plugin-showcase/host-server/bin/plugins/converter/converter_v1.0.0"
+
 func main() {
-	converter := &impl.ConverterImpl{}
+	// Get the plugin binary path
+	pluginPath := os.Getenv("PLUGIN_PATH")
+	if pluginPath == "" {
+		pluginPath = RUN_PATH
+	}
+
+	// Make path absolute
+	absPath, err := filepath.Abs(pluginPath)
+	if err != nil {
+		log.Fatalf("Failed to get absolute path: %v", err)
+	}
+
+	// Check if plugin exists
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		log.Fatalf("Plugin binary not found at %s. Please build it first using 'make plugin-converter'", absPath)
+	}
+
+	// Create plugin client
+	client := plugin.NewClient(&plugin.ClientConfig{
+		HandshakeConfig: common.Handshake,
+		Plugins: map[string]plugin.Plugin{
+			"converter": &common.PluginGRPCPlugin{},
+		},
+		Cmd:              exec.Command(absPath),
+		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
+	})
+	defer client.Kill()
+
+	// Connect via RPC
+	rpcClient, err := client.Client()
+	if err != nil {
+		log.Fatalf("Failed to create RPC client: %v", err)
+	}
+
+	// Request the plugin
+	raw, err := rpcClient.Dispense("converter")
+	if err != nil {
+		log.Fatalf("Failed to dispense plugin: %v", err)
+	}
+
+	// Cast to the plugin interface
+	converterPlugin := raw.(common.PluginInterface)
+
+	// Get metadata
+	fmt.Println("=== Plugin Metadata ===")
+	metadata, err := converterPlugin.GetMetadata()
+	if err != nil {
+		log.Fatalf("Failed to get metadata: %v", err)
+	}
+	fmt.Printf("Name: %s\n", metadata.Name)
+	fmt.Printf("Version: %s\n", metadata.Version)
+	fmt.Printf("Description: %s\n", metadata.Description)
+	fmt.Printf("Methods: %v\n", metadata.Methods)
+	fmt.Printf("Capabilities: %v\n\n", metadata.Capabilities)
 
 	jsonData := `[
 		{"id": "1", "name": "John Doe", "email": "john@example.com", "age": "30", "city": "New York"},
@@ -22,69 +81,98 @@ func main() {
 
 	// Convert to CSV
 	fmt.Println("=== Convert to CSV ===")
-	csvResult, err := converter.ConvertToCSV(jsonData, map[string]string{})
+	csvResult, err := converterPlugin.Execute("ConvertToCSV", map[string]string{"data": jsonData})
 	if err != nil {
-		log.Fatalf("CSV conversion failed: %v", err)
+		log.Printf("Error: %v\n", err)
+	} else if csvResult.Success {
+		fmt.Printf("%s\n\n", *csvResult.Result)
+	} else {
+		fmt.Printf("Error: %s\n\n", *csvResult.Error)
 	}
-	fmt.Println(csvResult)
-	fmt.Println()
 
 	// Convert to CSV with custom delimiter
 	fmt.Println("=== Convert to CSV (with semicolon delimiter) ===")
-	csvWithDelimiter, err := converter.ConvertToCSV(jsonData, map[string]string{"delimiter": ";"})
+	csvWithDelimiter, err := converterPlugin.Execute("ConvertToCSV", map[string]string{
+		"data":      jsonData,
+		"delimiter": ";",
+	})
 	if err != nil {
-		log.Fatalf("CSV conversion with delimiter failed: %v", err)
+		log.Printf("Error: %v\n", err)
+	} else if csvWithDelimiter.Success {
+		fmt.Printf("%s\n\n", *csvWithDelimiter.Result)
+	} else {
+		fmt.Printf("Error: %s\n\n", *csvWithDelimiter.Error)
 	}
-	fmt.Println(csvWithDelimiter)
-	fmt.Println()
 
 	// Convert to TXT (key-value format)
 	fmt.Println("=== Convert to TXT (key-value format) ===")
-	txtResult, err := converter.ConvertToTXT(jsonData, map[string]string{"format": "key-value"})
+	txtResult, err := converterPlugin.Execute("ConvertToTXT", map[string]string{
+		"data":   jsonData,
+		"format": "key-value",
+	})
 	if err != nil {
-		log.Fatalf("TXT conversion failed: %v", err)
+		log.Printf("Error: %v\n", err)
+	} else if txtResult.Success {
+		fmt.Printf("%s\n\n", *txtResult.Result)
+	} else {
+		fmt.Printf("Error: %s\n\n", *txtResult.Error)
 	}
-	fmt.Println(txtResult)
-	fmt.Println()
 
 	// Convert to TXT (pretty JSON format)
 	fmt.Println("=== Convert to TXT (pretty JSON format) ===")
-	txtPretty, err := converter.ConvertToTXT(jsonData, map[string]string{"format": "json-pretty"})
+	txtPretty, err := converterPlugin.Execute("ConvertToTXT", map[string]string{
+		"data":   jsonData,
+		"format": "json-pretty",
+	})
 	if err != nil {
-		log.Fatalf("TXT pretty conversion failed: %v", err)
+		log.Printf("Error: %v\n", err)
+	} else if txtPretty.Success {
+		fmt.Printf("%s\n\n", *txtPretty.Result)
+	} else {
+		fmt.Printf("Error: %s\n\n", *txtPretty.Error)
 	}
-	fmt.Println(txtPretty)
-	fmt.Println()
 
 	// Convert to HTML (styled table)
 	fmt.Println("=== Convert to HTML (styled table) ===")
-	htmlResult, err := converter.ConvertToHTML(jsonData, map[string]string{"styled": "true"})
+	htmlResult, err := converterPlugin.Execute("ConvertToHTML", map[string]string{
+		"data":   jsonData,
+		"styled": "true",
+	})
 	if err != nil {
-		log.Fatalf("HTML conversion failed: %v", err)
+		log.Printf("Error: %v\n", err)
+	} else if htmlResult.Success {
+		fmt.Printf("%s\n\n", *htmlResult.Result)
+	} else {
+		fmt.Printf("Error: %s\n\n", *htmlResult.Error)
 	}
-	fmt.Println(htmlResult)
-	fmt.Println()
 
 	// Convert to HTML (full page)
 	fmt.Println("=== Convert to HTML (full page) ===")
-	htmlFullPage, err := converter.ConvertToHTML(jsonData, map[string]string{
+	paramsMap := map[string]string{
+		"data":      jsonData,
 		"styled":    "true",
 		"full_page": "true",
-	})
-	if err != nil {
-		log.Fatalf("HTML full page conversion failed: %v", err)
 	}
-	fmt.Println(htmlFullPage)
-	fmt.Println()
+	htmlFullPage, err := converterPlugin.Execute("ConvertToHTML", paramsMap)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+	} else if htmlFullPage.Success {
+		fmt.Printf("%s\n\n", *htmlFullPage.Result)
+	} else {
+		fmt.Printf("Error: %s\n\n", *htmlFullPage.Error)
+	}
 
 	// Example with single object
 	singleObject := `{"id": "1", "name": "John Doe", "email": "john@example.com"}`
 	fmt.Println("=== Single Object to CSV ===")
-	singleCSV, err := converter.ConvertToCSV(singleObject, map[string]string{})
+	singleCSV, err := converterPlugin.Execute("ConvertToCSV", map[string]string{"data": singleObject})
 	if err != nil {
-		log.Fatalf("Single object CSV conversion failed: %v", err)
+		log.Printf("Error: %v\n", err)
+	} else if singleCSV.Success {
+		fmt.Printf("%s\n\n", *singleCSV.Result)
+	} else {
+		fmt.Printf("Error: %s\n\n", *singleCSV.Error)
 	}
-	fmt.Println(singleCSV)
 
 	// Example with nested object
 	nestedObject := `{
@@ -96,9 +184,17 @@ func main() {
 		"roles": ["admin", "user"]
 	}`
 	fmt.Println("=== Nested Object to TXT ===")
-	nestedTXT, err := converter.ConvertToTXT(nestedObject, map[string]string{"format": "key-value"})
+	nestedTXT, err := converterPlugin.Execute("ConvertToTXT", map[string]string{
+		"data":   nestedObject,
+		"format": "key-value",
+	})
 	if err != nil {
-		log.Fatalf("Nested object TXT conversion failed: %v", err)
+		log.Printf("Error: %v\n", err)
+	} else if nestedTXT.Success {
+		fmt.Printf("%s\n\n", *nestedTXT.Result)
+	} else {
+		fmt.Printf("Error: %s\n\n", *nestedTXT.Error)
 	}
-	fmt.Println(nestedTXT)
+
+	fmt.Println("=== All examples completed ===")
 }

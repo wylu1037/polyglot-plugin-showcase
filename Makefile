@@ -55,16 +55,31 @@ plugin-proto-breaking: ## 检查 proto 文件的破坏性变更
 	cd proto && buf breaking --against '.git#branch=main'
 
 plugin-desensitization: ## 构建数据脱敏插件
-	cd plugins/desensitization && go build -o ../../host-server/bin/plugins/desensitization
+	cd plugins/desensitization && go build -o ../../host-server/bin/plugins/desensitization/desensitization_v1.0.0 .
 
-plugin-build: plugin-desensitization ## 构建所有插件
+plugin-dpanonymizer: ## 构建差分隐私匿名化插件
+	cd plugins/dpanonymizer && go build -o ../../host-server/bin/plugins/dpanonymizer/dpanonymizer_v1.0.0 .
+
+plugin-converter: ## 构建数据转换插件
+	cd plugins/converter && go build -o ../../host-server/bin/plugins/converter/converter_v1.0.0 .
+
+plugin-build: plugin-desensitization plugin-dpanonymizer plugin-converter ## 构建所有插件
 
 plugin-clean: ## 清理插件二进制文件
 	rm -rf host-server/bin/plugins/*
 
 plugin-test: ## 运行插件测试
 	cd plugins/desensitization/impl && go test -v
+	cd plugins/dpanonymizer/impl && go test -v
 
-plugin-example: ## 运行插件示例
+plugin-example-desensitization: ## 运行数据脱敏插件示例
 	cd plugins/desensitization/example && go run main.go
+
+plugin-example-dpanonymizer: ## 运行差分隐私匿名化插件示例
+	cd plugins/dpanonymizer/example && go run main.go
+
+plugin-example-converter: ## 运行数据转换插件示例
+	cd plugins/converter/example && go run main.go
+
+plugin-example: plugin-example-desensitization plugin-example-dpanonymizer plugin-example-converter ## 运行所有插件示例
 

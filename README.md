@@ -17,7 +17,7 @@ A production-ready dynamic plugin system demonstration based on [HashiCorp go-pl
 - 🗄️ **Database Persistence** - Plugin metadata stored in PostgreSQL
 - 🔄 **Auto-reload** - Automatically load active plugins on server startup
 - 🛡️ **Error Handling** - Comprehensive error handling with structured responses
-- 🧪 **Example Plugin** - Complete data desensitization plugin implementation
+- 🧪 **Example Plugins** - Data desensitization and differential privacy anonymization plugins
 
 ## 🎯 Project Goals
 
@@ -58,10 +58,15 @@ polyglot-plugin-showcase/
 │   └── package.json
 │
 ├── plugins/                  # Plugin implementations
-│   └── desensitization/      # Data desensitization plugin
+│   ├── desensitization/      # Data desensitization plugin
+│   │   ├── main.go           # Plugin entry point
+│   │   ├── adapter/          # Plugin adapter (implements common interface)
+│   │   ├── impl/             # Business logic implementation
+│   │   └── example/          # Standalone example
+│   └── dpanonymizer/         # Differential privacy anonymization plugin
 │       ├── main.go           # Plugin entry point
-│       ├── adapter/          # Plugin adapter (implements common interface)
-│       ├── impl/             # Business logic implementation
+│       ├── adapter/          # Plugin adapter
+│       ├── impl/             # DP algorithms implementation
 │       └── example/          # Standalone example
 │
 ├── proto/                    # Protocol definitions
@@ -134,15 +139,19 @@ pnpm dev
 # Frontend runs at http://localhost:5173
 ```
 
-### 4. Build and Install Plugin
+### 4. Build and Install Plugins
 
 ```bash
-# Build desensitization plugin
+# Build all plugins
 make plugin-build
 
-# Or manually:
-cd plugins/desensitization
-go build -o ../../host-server/bin/plugins/desensitization/desensitization_v1.0.0
+# Or build individually:
+make plugin-desensitization    # Data desensitization plugin
+make plugin-dpanonymizer       # Differential privacy plugin
+
+# Run plugin examples:
+make plugin-example-desensitization
+make plugin-example-dpanonymizer
 
 # Install via API (see API documentation)
 ```
@@ -275,9 +284,13 @@ make web-build           # Build production bundle
 make web-generate        # Generate API client from OpenAPI
 
 # Plugins
-make plugin-build        # Build all plugins
-make plugin-proto        # Generate plugin protobuf code
-make plugin-test         # Run plugin tests
+make plugin-build                    # Build all plugins
+make plugin-desensitization          # Build desensitization plugin
+make plugin-dpanonymizer             # Build differential privacy plugin
+make plugin-proto                    # Generate plugin protobuf code
+make plugin-test                     # Run all plugin tests
+make plugin-example-desensitization  # Run desensitization example
+make plugin-example-dpanonymizer     # Run differential privacy example
 
 # Full stack
 make install             # Install all dependencies
@@ -457,4 +470,24 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 **Development Status**: ✅ Production Ready
 
-**Last Updated**: 2024-11-17
+**Last Updated**: 2025-11-18
+
+## 🔐 Featured Plugins
+
+### 1. Data Desensitization Plugin
+Provides various data masking methods for sensitive information:
+- Name desensitization
+- Phone number masking
+- ID card number masking
+- Email address masking
+- Bank card number masking
+- Address masking
+
+### 2. Differential Privacy Anonymization Plugin
+Implements Google's Differential Privacy library for privacy-preserving data analysis:
+- **Noise Addition**: Laplace and Gaussian noise mechanisms
+- **Aggregations**: Differentially private count, sum, mean, and variance
+- **Privacy Guarantees**: Configurable ε (epsilon) and δ (delta) parameters
+- **Use Cases**: Statistical reporting, data analytics, machine learning
+
+See [plugins/dpanonymizer/README.md](plugins/dpanonymizer/README.md) for detailed documentation.

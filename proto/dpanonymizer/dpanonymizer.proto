@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package dpanonymizer;
+
+option go_package = "github.com/wylu1037/polyglot-plugin-showcase/proto/dpanonymizer";
+
+// DPAnonymizer service definition for differential privacy based anonymization
+service DPAnonymizer {
+  // Add Laplace noise to a numeric value
+  rpc AddLaplaceNoise(NoiseRequest) returns (NoiseResponse);
+
+  // Add Gaussian noise to a numeric value
+  rpc AddGaussianNoise(NoiseRequest) returns (NoiseResponse);
+
+  // Calculate differentially private count
+  rpc DPCount(CountRequest) returns (CountResponse);
+
+  // Calculate differentially private sum
+  rpc DPSum(SumRequest) returns (SumResponse);
+
+  // Calculate differentially private mean
+  rpc DPMean(MeanRequest) returns (MeanResponse);
+
+  // Calculate differentially private variance
+  rpc DPVariance(VarianceRequest) returns (VarianceResponse);
+}
+
+message NoiseRequest {
+  double value = 1;
+  double epsilon = 2;// Privacy budget
+  double delta = 3;// Failure probability (for Gaussian)
+  double sensitivity = 4;// Sensitivity of the query
+}
+
+message NoiseResponse {
+  double result = 1;
+}
+
+message CountRequest {
+  repeated double values = 1;
+  double epsilon = 2;
+  double delta = 3;
+  int64 max_partitions_contributed = 4;
+}
+
+message CountResponse {
+  int64 result = 1;
+}
+
+message SumRequest {
+  repeated double values = 1;
+  double epsilon = 2;
+  double delta = 3;
+  double lower_bound = 4;
+  double upper_bound = 5;
+  int64 max_partitions_contributed = 6;
+}
+
+message SumResponse {
+  double result = 1;
+}
+
+message MeanRequest {
+  repeated double values = 1;
+  double epsilon = 2;
+  double delta = 3;
+  double lower_bound = 4;
+  double upper_bound = 5;
+  int64 max_partitions_contributed = 6;
+}
+
+message MeanResponse {
+  double result = 1;
+}
+
+message VarianceRequest {
+  repeated double values = 1;
+  double epsilon = 2;
+  double delta = 3;
+  double lower_bound = 4;
+  double upper_bound = 5;
+  int64 max_partitions_contributed = 6;
+}
+
+message VarianceResponse {
+  double result = 1;
+}
+
