@@ -39,10 +39,12 @@ const docTemplate = `{
                 "summary": "List all plugins",
                 "parameters": [
                     {
-                        "enum": [
-                            "grpc",
-                            "http"
-                        ],
+                        "type": "string",
+                        "description": "Filter by namespace",
+                        "name": "namespace",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Filter by plugin type",
                         "name": "type",
@@ -51,11 +53,35 @@ const docTemplate = `{
                     {
                         "enum": [
                             "active",
-                            "inactive"
+                            "inactive",
+                            "disabled",
+                            "error",
+                            "installing"
                         ],
                         "type": "string",
                         "description": "Filter by plugin status",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "linux",
+                            "darwin",
+                            "windows"
+                        ],
+                        "type": "string",
+                        "description": "Filter by operating system",
+                        "name": "os",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "amd64",
+                            "arm64"
+                        ],
+                        "type": "string",
+                        "description": "Filter by architecture",
+                        "name": "arch",
                         "in": "query"
                     }
                 ],
@@ -410,6 +436,10 @@ const docTemplate = `{
         "models.Plugin": {
             "type": "object",
             "properties": {
+                "arch": {
+                    "description": "架构",
+                    "type": "string"
+                },
                 "binary_path": {
                     "type": "string"
                 },
@@ -432,9 +462,22 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "metadata": {
-                    "$ref": "#/definitions/models.JSONMap"
+                    "description": "结构化元数据，存储 PluginMetadata",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.JSONMap"
+                        }
+                    ]
                 },
                 "name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "description": "命名空间",
+                    "type": "string"
+                },
+                "os": {
+                    "description": "操作系统",
                     "type": "string"
                 },
                 "protocol": {
@@ -510,45 +553,48 @@ const docTemplate = `{
         "models.PluginType": {
             "type": "string",
             "enum": [
-                "desensitization",
-                "encryption",
-                "validation",
-                "transform",
-                "custom"
+                "data-processing",
+                "security",
+                "integration",
+                "extension"
             ],
             "x-enum-comments": {
-                "PluginTypeCustom": "自定义",
-                "PluginTypeDesensitization": "数据脱敏",
-                "PluginTypeEncryption": "加密",
-                "PluginTypeTransform": "数据转换",
-                "PluginTypeValidation": "验证"
+                "PluginTypeDataProcessing": "数据处理：脱敏、转换、匿名化等",
+                "PluginTypeExtension": "扩展：通用扩展功能",
+                "PluginTypeIntegration": "集成：外部系统对接",
+                "PluginTypeSecurity": "安全：加密、验证等"
             },
             "x-enum-descriptions": [
-                "数据脱敏",
-                "加密",
-                "验证",
-                "数据转换",
-                "自定义"
+                "数据处理：脱敏、转换、匿名化等",
+                "安全：加密、验证等",
+                "集成：外部系统对接",
+                "扩展：通用扩展功能"
             ],
             "x-enum-varnames": [
-                "PluginTypeDesensitization",
-                "PluginTypeEncryption",
-                "PluginTypeValidation",
-                "PluginTypeTransform",
-                "PluginTypeCustom"
+                "PluginTypeDataProcessing",
+                "PluginTypeSecurity",
+                "PluginTypeIntegration",
+                "PluginTypeExtension"
             ]
         },
         "request.CallPluginRequest": {
             "type": "object",
             "required": [
+                "id",
                 "method",
                 "params"
             ],
             "properties": {
+                "id": {
+                    "description": "Plugin ID from path parameter",
+                    "type": "integer"
+                },
                 "method": {
+                    "description": "Method name from request body",
                     "type": "string"
                 },
                 "params": {
+                    "description": "Method parameters from request body",
                     "type": "object",
                     "additionalProperties": {}
                 }
@@ -557,12 +603,23 @@ const docTemplate = `{
         "request.InstallPluginRequest": {
             "type": "object",
             "required": [
+                "arch",
                 "downloadURL",
                 "name",
+                "namespace",
+                "os",
                 "type",
                 "version"
             ],
             "properties": {
+                "arch": {
+                    "description": "新增：架构",
+                    "type": "string",
+                    "enum": [
+                        "amd64",
+                        "arm64"
+                    ]
+                },
                 "config": {
                     "$ref": "#/definitions/models.JSONMap"
                 },
@@ -578,8 +635,22 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "namespace": {
+                    "description": "新增：命名空间",
+                    "type": "string"
+                },
+                "os": {
+                    "description": "新增：操作系统",
+                    "type": "string",
+                    "enum": [
+                        "linux",
+                        "darwin",
+                        "windows"
+                    ]
+                },
                 "type": {
-                    "$ref": "#/definitions/models.PluginType"
+                    "description": "修改：从枚举改为 string",
+                    "type": "string"
                 },
                 "version": {
                     "type": "string"

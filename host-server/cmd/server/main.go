@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/wylu1037/polyglot-plugin-host-server/app/database"
 	"github.com/wylu1037/polyglot-plugin-host-server/app/modules/plugins"
 	"github.com/wylu1037/polyglot-plugin-host-server/app/router"
@@ -28,18 +30,15 @@ import (
 // @tag.description Plugin management operations
 func main() {
 	app := fx.New(
+		fx.StartTimeout(2*time.Minute),
 		fx.Supply(""),
 		fx.Provide(config.Load),
 		fx.Provide(database.NewDatabase),
 		fx.Provide(router.NewRouter),
-		fx.Provide(
-			plugin.ProvideRegistry,
-			plugin.ProvideManager,
-		),
 		fx.Provide(bootstrap.NewEchoApp),
+		plugin.Module,
 		plugins.Module,
 		fx.Invoke(database.AutoMigrate),
-		fx.Invoke(plugin.AutoLoadPlugins),
 		fx.Invoke(bootstrap.Start),
 	)
 

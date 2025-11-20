@@ -11,22 +11,24 @@ import (
 	"gorm.io/gorm"
 )
 
-func ProvideRegistry() *Registry {
+var Module = fx.Options(
+	fx.Provide(provideRegistry),
+	fx.Provide(provideManager),
+	fx.Invoke(autoLoadPlugins),
+)
+
+func provideRegistry() *Registry {
 	return NewRegistry()
 }
 
-func ProvideManager(cfg *config.Config, registry *Registry) *Manager {
+func provideManager(cfg *config.Config, registry *Registry) *Manager {
 	return NewManager(registry, &ManagerConfig{
 		DownloadTimeout: cfg.Plugin.DownloadTimeout,
 		StartupTimeout:  cfg.Plugin.StartupTimeout,
 	})
 }
 
-func ProvidePluginDir(cfg *config.Config) string {
-	return cfg.Plugin.Dir
-}
-
-type AutoLoadPluginsParams struct {
+type autoLoadPluginsParams struct {
 	fx.In
 	Lifecycle fx.Lifecycle
 	Manager   *Manager
@@ -35,10 +37,9 @@ type AutoLoadPluginsParams struct {
 	Config    *config.Config
 }
 
-func AutoLoadPlugins(p AutoLoadPluginsParams) {
+func autoLoadPlugins(p autoLoadPluginsParams) {
 	p.Lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			// Find all active plugins
 			plugins, err := p.Repo.FindAll(map[string]any{
 				"status": models.PluginStatusActive,
 			})
@@ -46,15 +47,17 @@ func AutoLoadPlugins(p AutoLoadPluginsParams) {
 				return fmt.Errorf("failed to find active plugins: %w", err)
 			}
 
-			// Load each plugin
+			if len(plugins) == 0 {
+				fmt.Println("📦 No active plugins to load")
+				return nil
+			}
+
 			for _, plugin := range plugins {
-				if err := p.Manager.LoadPlugin(plugin.ID, plugin.BinaryPath, plugin.Type); err != nil {
-					// Log error but don't fail startup
-					fmt.Printf("Failed to load plugin %s (ID: %d): %v\n", plugin.Name, plugin.ID, err)
-					// Update plugin status to error
+				if err := p.Manager.LoadPlugin(plugin.ID, plugin.BinaryPath, plugin.Name); err != nil {
+					fmt.Printf("❌ Failed to load plugin %s (ID: %d): %v\n", plugin.Name, plugin.ID, err)
 					p.Repo.UpdateStatus(plugin.ID, models.PluginStatusError)
 				} else {
-					fmt.Printf("Successfully loaded plugin %s (ID: %d)\n", plugin.Name, plugin.ID)
+					fmt.Printf("✅ Successfully loaded plugin %s (ID: %d)\n", plugin.Name, plugin.ID)
 				}
 			}
 

@@ -65,8 +65,11 @@ func (ctrl *pluginController) InstallPlugin(c echo.Context) error {
 // @Tags         Plugins
 // @Accept       json
 // @Produce      json
-// @Param        type   query string false "Filter by plugin type" Enums(grpc, http)
-// @Param        status query string false "Filter by plugin status" Enums(active, inactive)
+// @Param        namespace query string false "Filter by namespace"
+// @Param        type      query string false "Filter by plugin type"
+// @Param        status    query string false "Filter by plugin status" Enums(active, inactive, disabled, error, installing)
+// @Param        os        query string false "Filter by operating system" Enums(linux, darwin, windows)
+// @Param        arch      query string false "Filter by architecture" Enums(amd64, arm64)
 // @Success      200 {array} models.Plugin
 // @Failure      400 {object} errors.AppError
 // @Failure      500 {object} errors.AppError
@@ -81,15 +84,7 @@ func (ctrl *pluginController) ListPlugins(c echo.Context) error {
 		return errors.ErrValidationFailed.WithDetails(err.Error()).WithInternal(err)
 	}
 
-	filters := make(map[string]any)
-	if req.Type != "" {
-		filters["type"] = req.Type
-	}
-	if req.Status != "" {
-		filters["status"] = req.Status
-	}
-
-	plugins, err := ctrl.service.ListPlugins(filters)
+	plugins, err := ctrl.service.ListPlugins(&req)
 	if err != nil {
 		return errors.ErrInternalServer.WithDetails("Failed to list plugins").WithInternal(err)
 	}
@@ -229,25 +224,16 @@ func (ctrl *pluginController) UninstallPlugin(c echo.Context) error {
 // @Failure      500 {object} errors.AppError
 // @Router       /api/plugins/{id}/call [post]
 func (ctrl *pluginController) CallPlugin(c echo.Context) error {
-	var idReq request.PluginIDRequest
-	if err := c.Bind(&idReq); err != nil {
-		return errors.ErrBadRequest.WithDetails("Invalid plugin ID").WithInternal(err)
-	}
-
-	if err := c.Validate(&idReq); err != nil {
-		return errors.ErrValidationFailed.WithDetails(err.Error()).WithInternal(err)
-	}
-
 	var req request.CallPluginRequest
 	if err := c.Bind(&req); err != nil {
-		return errors.ErrBadRequest.WithDetails("Invalid request body format").WithInternal(err)
+		return errors.ErrBadRequest.WithDetails("Invalid request format").WithInternal(err)
 	}
 
 	if err := c.Validate(&req); err != nil {
 		return errors.ErrValidationFailed.WithDetails(err.Error()).WithInternal(err)
 	}
 
-	result, err := ctrl.service.CallPlugin(idReq.ID, &req)
+	result, err := ctrl.service.CallPlugin(req.ID, &req)
 	if err != nil {
 		return errors.ErrPluginCallFailed.WithInternal(err)
 	}

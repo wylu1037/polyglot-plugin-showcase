@@ -19,7 +19,7 @@ type PluginService interface {
 	ActivatePlugin(id uint) error
 	DeactivatePlugin(id uint) error
 	UninstallPlugin(id uint) error
-	ListPlugins(filters map[string]any) ([]*models.Plugin, error)
+	ListPlugins(req *request.ListPluginsRequest) ([]*models.Plugin, error)
 	GetPluginInfo(id uint) (*models.Plugin, error)
 	CallPlugin(id uint, req *request.CallPluginRequest) (any, error)
 }
@@ -43,7 +43,6 @@ func NewPluginService(
 }
 
 func (s *pluginService) InstallPlugin(req *request.InstallPluginRequest) (*models.Plugin, error) {
-	// Check if plugin already exists
 	existing, err := s.repo.FindByNameAndVersion(req.Name, req.Version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check existing plugin: %w", err)
@@ -52,10 +51,16 @@ func (s *pluginService) InstallPlugin(req *request.InstallPluginRequest) (*model
 		return nil, fmt.Errorf("plugin %s version %s already exists", req.Name, req.Version)
 	}
 
-	// Construct binary path: {pluginDir}/{type}/{name}_{version}
-	binaryPath := filepath.Join(s.pluginDir, string(req.Type), fmt.Sprintf("%s_%s", req.Name, req.Version))
+	binaryPath := filepath.Join(
+		s.pluginDir,
+		req.Namespace,
+		req.Type,
+		req.Name,
+		req.Version,
+		fmt.Sprintf("%s_%s", req.OS, req.Arch),
+		"plugin",
+	)
 
-	// Create plugin record with installing status
 	pluginRecord := &models.Plugin{
 		Name:            req.Name,
 		Version:         req.Version,
@@ -74,45 +79,37 @@ func (s *pluginService) InstallPlugin(req *request.InstallPluginRequest) (*model
 		return nil, fmt.Errorf("failed to create plugin record: %w", err)
 	}
 
-	// Download plugin
 	if err := s.manager.DownloadPlugin(req.DownloadURL, binaryPath); err != nil {
 		s.repo.UpdateStatus(pluginRecord.ID, models.PluginStatusError)
 		return nil, fmt.Errorf("failed to download plugin: %w", err)
 	}
 
-	// Update status to inactive (installed but not activated)
 	if err := s.repo.UpdateStatus(pluginRecord.ID, models.PluginStatusInactive); err != nil {
 		return nil, fmt.Errorf("failed to update plugin status: %w", err)
 	}
 
-	// Reload plugin record
 	return s.repo.FindByID(pluginRecord.ID)
 }
 
 func (s *pluginService) ActivatePlugin(id uint) error {
-	// Get plugin record
 	pluginRecord, err := s.repo.FindByID(id)
 	if err != nil {
 		return fmt.Errorf("failed to find plugin: %w", err)
 	}
 
-	// Check if already active
 	if pluginRecord.Status == models.PluginStatusActive {
 		return nil
 	}
 
-	// Check if plugin is in a loadable state
 	if pluginRecord.Status != models.PluginStatusInactive && pluginRecord.Status != models.PluginStatusDisabled {
 		return fmt.Errorf("plugin cannot be activated from status: %s", pluginRecord.Status)
 	}
 
-	// Load plugin
-	if err := s.manager.LoadPlugin(id, pluginRecord.BinaryPath, pluginRecord.Type); err != nil {
+	if err := s.manager.LoadPlugin(id, pluginRecord.BinaryPath, pluginRecord.Name); err != nil {
 		s.repo.UpdateStatus(id, models.PluginStatusError)
 		return fmt.Errorf("failed to load plugin: %w", err)
 	}
 
-	// Update status to active
 	if err := s.repo.UpdateStatus(id, models.PluginStatusActive); err != nil {
 		s.manager.UnloadPlugin(id)
 		return fmt.Errorf("failed to update plugin status: %w", err)
@@ -122,23 +119,19 @@ func (s *pluginService) ActivatePlugin(id uint) error {
 }
 
 func (s *pluginService) DeactivatePlugin(id uint) error {
-	// Get plugin record
 	pluginRecord, err := s.repo.FindByID(id)
 	if err != nil {
 		return fmt.Errorf("failed to find plugin: %w", err)
 	}
 
-	// Check if already inactive
 	if pluginRecord.Status == models.PluginStatusInactive {
 		return nil
 	}
 
-	// Unload plugin
 	if err := s.manager.UnloadPlugin(id); err != nil {
 		return fmt.Errorf("failed to unload plugin: %w", err)
 	}
 
-	// Update status to inactive
 	if err := s.repo.UpdateStatus(id, models.PluginStatusInactive); err != nil {
 		return fmt.Errorf("failed to update plugin status: %w", err)
 	}
@@ -147,25 +140,21 @@ func (s *pluginService) DeactivatePlugin(id uint) error {
 }
 
 func (s *pluginService) UninstallPlugin(id uint) error {
-	// Get plugin record
 	pluginRecord, err := s.repo.FindByID(id)
 	if err != nil {
 		return fmt.Errorf("failed to find plugin: %w", err)
 	}
 
-	// Deactivate if active
 	if pluginRecord.Status == models.PluginStatusActive {
 		if err := s.DeactivatePlugin(id); err != nil {
 			return fmt.Errorf("failed to deactivate plugin: %w", err)
 		}
 	}
 
-	// Remove binary file
 	if err := os.Remove(pluginRecord.BinaryPath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove plugin binary: %w", err)
 	}
 
-	// Delete database record
 	if err := s.repo.Delete(id); err != nil {
 		return fmt.Errorf("failed to delete plugin record: %w", err)
 	}
@@ -173,7 +162,24 @@ func (s *pluginService) UninstallPlugin(id uint) error {
 	return nil
 }
 
-func (s *pluginService) ListPlugins(filters map[string]any) ([]*models.Plugin, error) {
+func (s *pluginService) ListPlugins(req *request.ListPluginsRequest) ([]*models.Plugin, error) {
+	filters := make(map[string]any)
+	if req.Namespace != "" {
+		filters["namespace"] = req.Namespace
+	}
+	if req.Type != "" {
+		filters["type"] = req.Type
+	}
+	if req.Status != "" {
+		filters["status"] = req.Status
+	}
+	if req.OS != "" {
+		filters["os"] = req.OS
+	}
+	if req.Arch != "" {
+		filters["arch"] = req.Arch
+	}
+
 	return s.repo.FindAll(filters)
 }
 
@@ -199,13 +205,11 @@ func (s *pluginService) CallPlugin(id uint, req *request.CallPluginRequest) (any
 		return nil, fmt.Errorf("failed to get plugin client: %w", err)
 	}
 
-	// Type assert to common plugin interface
 	pluginClient, ok := clientInterface.(common.PluginInterface)
 	if !ok {
 		return nil, fmt.Errorf("plugin does not implement common.PluginInterface")
 	}
 
-	// Convert params from map[string]any to map[string]string
 	stringParams := make(map[string]string)
 	for key, value := range req.Params {
 		if strValue, ok := value.(string); ok {
@@ -215,7 +219,6 @@ func (s *pluginService) CallPlugin(id uint, req *request.CallPluginRequest) (any
 		}
 	}
 
-	// Execute plugin method using generic interface
 	result, err := pluginClient.Execute(req.Method, stringParams)
 	if err != nil {
 		return nil, fmt.Errorf("plugin execution failed: %w", err)
@@ -230,7 +233,7 @@ func (s *pluginService) CallPlugin(id uint, req *request.CallPluginRequest) (any
 	}
 
 	if result.Result == nil {
-		return "", nil // Success but no result
+		return "", nil
 	}
 
 	return *result.Result, nil

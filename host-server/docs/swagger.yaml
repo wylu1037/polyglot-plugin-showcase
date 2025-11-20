@@ -26,6 +26,9 @@ definitions:
     type: object
   models.Plugin:
     properties:
+      arch:
+        description: 架构
+        type: string
       binary_path:
         type: string
       config:
@@ -41,8 +44,16 @@ definitions:
       last_used_at:
         type: integer
       metadata:
-        $ref: '#/definitions/models.JSONMap'
+        allOf:
+        - $ref: '#/definitions/models.JSONMap'
+        description: 结构化元数据，存储 PluginMetadata
       name:
+        type: string
+      namespace:
+        description: 命名空间
+        type: string
+      os:
+        description: 操作系统
         type: string
       protocol:
         $ref: '#/definitions/models.PluginProtocol'
@@ -99,43 +110,51 @@ definitions:
     - PluginStatusInstalling
   models.PluginType:
     enum:
-    - desensitization
-    - encryption
-    - validation
-    - transform
-    - custom
+    - data-processing
+    - security
+    - integration
+    - extension
     type: string
     x-enum-comments:
-      PluginTypeCustom: 自定义
-      PluginTypeDesensitization: 数据脱敏
-      PluginTypeEncryption: 加密
-      PluginTypeTransform: 数据转换
-      PluginTypeValidation: 验证
+      PluginTypeDataProcessing: 数据处理：脱敏、转换、匿名化等
+      PluginTypeExtension: 扩展：通用扩展功能
+      PluginTypeIntegration: 集成：外部系统对接
+      PluginTypeSecurity: 安全：加密、验证等
     x-enum-descriptions:
-    - 数据脱敏
-    - 加密
-    - 验证
-    - 数据转换
-    - 自定义
+    - 数据处理：脱敏、转换、匿名化等
+    - 安全：加密、验证等
+    - 集成：外部系统对接
+    - 扩展：通用扩展功能
     x-enum-varnames:
-    - PluginTypeDesensitization
-    - PluginTypeEncryption
-    - PluginTypeValidation
-    - PluginTypeTransform
-    - PluginTypeCustom
+    - PluginTypeDataProcessing
+    - PluginTypeSecurity
+    - PluginTypeIntegration
+    - PluginTypeExtension
   request.CallPluginRequest:
     properties:
+      id:
+        description: Plugin ID from path parameter
+        type: integer
       method:
+        description: Method name from request body
         type: string
       params:
         additionalProperties: {}
+        description: Method parameters from request body
         type: object
     required:
+    - id
     - method
     - params
     type: object
   request.InstallPluginRequest:
     properties:
+      arch:
+        description: 新增：架构
+        enum:
+        - amd64
+        - arm64
+        type: string
       config:
         $ref: '#/definitions/models.JSONMap'
       description:
@@ -146,13 +165,27 @@ definitions:
         $ref: '#/definitions/models.JSONMap'
       name:
         type: string
+      namespace:
+        description: 新增：命名空间
+        type: string
+      os:
+        description: 新增：操作系统
+        enum:
+        - linux
+        - darwin
+        - windows
+        type: string
       type:
-        $ref: '#/definitions/models.PluginType'
+        description: 修改：从枚举改为 string
+        type: string
       version:
         type: string
     required:
+    - arch
     - downloadURL
     - name
+    - namespace
+    - os
     - type
     - version
     type: object
@@ -177,10 +210,11 @@ paths:
       - application/json
       description: Get a list of all installed plugins with optional filters
       parameters:
+      - description: Filter by namespace
+        in: query
+        name: namespace
+        type: string
       - description: Filter by plugin type
-        enum:
-        - grpc
-        - http
         in: query
         name: type
         type: string
@@ -188,8 +222,26 @@ paths:
         enum:
         - active
         - inactive
+        - disabled
+        - error
+        - installing
         in: query
         name: status
+        type: string
+      - description: Filter by operating system
+        enum:
+        - linux
+        - darwin
+        - windows
+        in: query
+        name: os
+        type: string
+      - description: Filter by architecture
+        enum:
+        - amd64
+        - arm64
+        in: query
+        name: arch
         type: string
       produces:
       - application/json

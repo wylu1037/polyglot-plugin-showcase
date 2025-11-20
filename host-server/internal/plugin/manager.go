@@ -11,12 +11,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-plugin"
-	"github.com/wylu1037/polyglot-plugin-host-server/app/database/models"
 )
 
 type Manager struct {
 	registry         *Registry
-	discovery        *Discovery
 	clients          map[uint]*plugin.Client
 	clientInterfaces map[uint]any
 	mu               sync.RWMutex
@@ -39,7 +37,6 @@ func NewManager(registry *Registry, config *ManagerConfig) *Manager {
 
 	m := &Manager{
 		registry:         registry,
-		discovery:        NewDiscovery(registry),
 		clients:          make(map[uint]*plugin.Client),
 		clientInterfaces: make(map[uint]any),
 		downloadTimeout:  config.DownloadTimeout,
@@ -50,30 +47,25 @@ func NewManager(registry *Registry, config *ManagerConfig) *Manager {
 }
 
 func (m *Manager) DownloadPlugin(url, destPath string) error {
-	// Create HTTP client with timeout
 	client := &http.Client{
 		Timeout: m.downloadTimeout,
 	}
 
-	// Make request
 	resp, err := client.Get(url)
 	if err != nil {
 		return fmt.Errorf("failed to download plugin: %w", err)
 	}
 	defer resp.Body.Close()
 
-	// Check status code
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to download plugin: HTTP %d", resp.StatusCode)
 	}
 
-	// Create destination directory if not exists
 	destDir := filepath.Dir(destPath)
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return fmt.Errorf("failed to create destination directory: %w", err)
 	}
 
-	// Create temporary file
 	tempFile := destPath + ".tmp"
 	out, err := os.Create(tempFile)
 	if err != nil {
@@ -81,20 +73,17 @@ func (m *Manager) DownloadPlugin(url, destPath string) error {
 	}
 	defer out.Close()
 
-	// Copy content
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
 		os.Remove(tempFile)
 		return fmt.Errorf("failed to save plugin: %w", err)
 	}
 
-	// Make file executable
 	if err := os.Chmod(tempFile, 0755); err != nil {
 		os.Remove(tempFile)
 		return fmt.Errorf("failed to make plugin executable: %w", err)
 	}
 
-	// Rename to final destination
 	if err := os.Rename(tempFile, destPath); err != nil {
 		os.Remove(tempFile)
 		return fmt.Errorf("failed to move plugin to destination: %w", err)
@@ -103,31 +92,26 @@ func (m *Manager) DownloadPlugin(url, destPath string) error {
 	return nil
 }
 
-// LoadPlugin loads a plugin and returns the client
-func (m *Manager) LoadPlugin(pluginID uint, pluginPath string, pluginType models.PluginType) error {
-	// Check if plugin is already loaded
+func (m *Manager) LoadPlugin(pluginID uint, pluginPath string, pluginName string) error {
 	m.mu.RLock()
 	if _, exists := m.clients[pluginID]; exists {
 		m.mu.RUnlock()
-		return nil // Already loaded
+		return nil
 	}
 	m.mu.RUnlock()
 
-	// Get plugin type info from registry
-	typeInfo, err := m.registry.GetTypeInfo(pluginType)
+	pluginInterfaceInfo, err := m.registry.GetPluginInterfaceInfo(pluginName)
 	if err != nil {
-		return fmt.Errorf("failed to get plugin type info: %w", err)
+		return fmt.Errorf("failed to get plugin interface info for '%s': %w", pluginName, err)
 	}
 
-	// Validate plugin binary
-	if err := m.discovery.ValidatePluginBinary(pluginPath); err != nil {
-		return fmt.Errorf("invalid plugin binary: %w", err)
+	if err := m.validatePluginBinary(pluginPath); err != nil {
+		return fmt.Errorf("invalid plugin binary at '%s': %w", pluginPath, err)
 	}
 
-	// Create plugin client
 	client := plugin.NewClient(&plugin.ClientConfig{
-		HandshakeConfig: typeInfo.HandshakeConfig,
-		Plugins:         typeInfo.PluginMap,
+		HandshakeConfig: pluginInterfaceInfo.HandshakeConfig,
+		Plugins:         pluginInterfaceInfo.PluginMap,
 		Cmd:             exec.Command(pluginPath),
 		AllowedProtocols: []plugin.Protocol{
 			plugin.ProtocolGRPC,
@@ -135,27 +119,23 @@ func (m *Manager) LoadPlugin(pluginID uint, pluginPath string, pluginType models
 		StartTimeout: m.startupTimeout,
 	})
 
-	// Connect via RPC
 	rpcClient, err := client.Client()
 	if err != nil {
 		client.Kill()
 		return fmt.Errorf("failed to connect to plugin: %w", err)
 	}
 
-	// Dispense plugin interface
-	raw, err := rpcClient.Dispense(typeInfo.InterfaceName)
+	raw, err := rpcClient.Dispense(pluginInterfaceInfo.PluginName)
 	if err != nil {
 		client.Kill()
-		return fmt.Errorf("failed to dispense plugin: %w", err)
+		return fmt.Errorf("failed to dispense plugin interface '%s': %w", pluginInterfaceInfo.PluginName, err)
 	}
 
-	// Verify protocol version compatibility (similar to Terraform's approach)
 	if err := m.verifyProtocolVersion(raw); err != nil {
 		client.Kill()
 		return fmt.Errorf("protocol version incompatible: %w", err)
 	}
 
-	// Store client and interface
 	m.mu.Lock()
 	m.clients[pluginID] = client
 	m.clientInterfaces[pluginID] = raw
@@ -164,27 +144,23 @@ func (m *Manager) LoadPlugin(pluginID uint, pluginPath string, pluginType models
 	return nil
 }
 
-// UnloadPlugin unloads a plugin
 func (m *Manager) UnloadPlugin(pluginID uint) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	client, exists := m.clients[pluginID]
 	if !exists {
-		return nil // Already unloaded
+		return nil
 	}
 
-	// Kill plugin process
 	client.Kill()
 
-	// Remove from maps
 	delete(m.clients, pluginID)
 	delete(m.clientInterfaces, pluginID)
 
 	return nil
 }
 
-// GetPluginClient returns the plugin client interface
 func (m *Manager) GetPluginClient(pluginID uint) (any, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -197,16 +173,6 @@ func (m *Manager) GetPluginClient(pluginID uint) (any, error) {
 	return clientInterface, nil
 }
 
-// IsPluginLoaded checks if a plugin is loaded
-func (m *Manager) IsPluginLoaded(pluginID uint) bool {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	_, exists := m.clients[pluginID]
-	return exists
-}
-
-// UnloadAll unloads all plugins
 func (m *Manager) UnloadAll() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -219,23 +185,27 @@ func (m *Manager) UnloadAll() {
 	m.clientInterfaces = make(map[uint]any)
 }
 
-// GetLoadedPluginIDs returns all loaded plugin IDs
-func (m *Manager) GetLoadedPluginIDs() []uint {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	ids := make([]uint, 0, len(m.clients))
-	for id := range m.clients {
-		ids = append(ids, id)
+// validatePluginBinary validates that the plugin binary exists and is executable
+func (m *Manager) validatePluginBinary(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("plugin binary not found: %w", err)
 	}
-	return ids
+
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("plugin binary is not a regular file")
+	}
+
+	if info.Mode()&0111 == 0 {
+		return fmt.Errorf("plugin binary is not executable")
+	}
+
+	return nil
 }
 
 // verifyProtocolVersion verifies that the plugin's protocol version is compatible
 // with the host. This follows Terraform's approach of checking version ranges.
 func (m *Manager) verifyProtocolVersion(pluginInterface any) error {
-	// Import common package to access version checking
-	// Try to get metadata from the plugin
 	type MetadataGetter interface {
 		GetMetadata() (*struct {
 			Name            string

@@ -12,7 +12,7 @@ import (
 	"github.com/wylu1037/polyglot-plugin-showcase/proto/common"
 )
 
-const RUN_PATH = "/Users/wenyanglu/Workspace/github/polyglot-plugin-showcase/host-server/bin/plugins/dpanonymizer/dpanonymizer_v1.0.0"
+const RUN_PATH = "/Users/wenyanglu/Workspace/github/polyglot-plugin-showcase/host-server/bin/plugins/builtin/data-processing/dpanonymizer/v1.0.0/darwin_arm64/plugin"
 
 func main() {
 	// Get the plugin binary path
