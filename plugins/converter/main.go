@@ -18,4 +18,3 @@ func main() {
 		GRPCServer: plugin.DefaultGRPCServer,
 	})
 }
-

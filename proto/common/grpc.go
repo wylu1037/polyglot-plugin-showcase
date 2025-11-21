@@ -28,12 +28,6 @@ const (
 // Version history:
 // v1 (current): Initial release with GetMetadata and Execute methods
 
-// IsProtocolVersionSupported checks if a given protocol version is supported.
-// This allows the host to reject incompatible plugins early during handshake.
-func IsProtocolVersionSupported(version int) bool {
-	return version >= MinSupportedProtocolVersion && version <= MaxSupportedProtocolVersion
-}
-
 // Handshake is a common handshake that is shared by all plugins.
 // Reference: Terraform's plugin system uses similar handshake mechanism.
 //
@@ -43,11 +37,6 @@ var Handshake = plugin.HandshakeConfig{
 	ProtocolVersion:  CurrentProtocolVersion,
 	MagicCookieKey:   "PLUGIN_INTERFACE",
 	MagicCookieValue: MagicCookieValue,
-}
-
-// PluginMap is the map of plugins we can dispense
-var PluginMap = map[string]plugin.Plugin{
-	"plugin": &PluginGRPCPlugin{},
 }
 
 // PluginGRPCPlugin is the implementation of plugin.GRPCPlugin
@@ -91,8 +80,8 @@ func (m *GRPCClient) Execute(method string, params map[string]string) (*ExecuteR
 
 // GRPCServer is the gRPC server that GRPCClient talks to
 type GRPCServer struct {
-	Impl PluginInterface
 	UnimplementedPluginServer
+	Impl PluginInterface
 }
 
 func (m *GRPCServer) GetMetadata(ctx context.Context, req *MetadataRequest) (*MetadataResponse, error) {

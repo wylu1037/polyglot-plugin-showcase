@@ -117,7 +117,6 @@ go mod download
 
 # Run server
 make server-dev
-# Or: go run cmd/server/main.go
 
 # Server runs at http://localhost:8080
 # API Docs at http://localhost:8080/docs
@@ -130,11 +129,9 @@ cd host-web
 
 # Install dependencies
 pnpm install
-# Or: npm install
 
 # Start development server
 pnpm dev
-# Or: npm run dev
 
 # Frontend runs at http://localhost:5173
 ```
@@ -145,13 +142,8 @@ pnpm dev
 # Build all plugins
 make plugin-build
 
-# Or build individually:
-make plugin-desensitization    # Data desensitization plugin
-make plugin-dpanonymizer       # Differential privacy plugin
-
-# Run plugin examples:
-make plugin-example-desensitization
-make plugin-example-dpanonymizer
+# Plugins will be built to:
+# host-server/bin/plugins/builtin/data-processing/{plugin-name}/v1.0.0/darwin_arm64/plugin
 
 # Install via API (see API documentation)
 ```
@@ -273,28 +265,24 @@ curl -X POST http://localhost:8080/api/plugins/1/call \
 ### Project Commands
 
 ```bash
-# Backend
-make server-dev          # Start development server
-make server-build        # Build production binary
-make swagger             # Generate API documentation
+# Help
+make help                # Show all available commands
 
-# Frontend
-make web-dev             # Start frontend dev server
-make web-build           # Build production bundle
-make web-generate        # Generate API client from OpenAPI
+# Installation
+make install             # Install all dependencies (backend + frontend)
 
-# Plugins
-make plugin-build                    # Build all plugins
-make plugin-desensitization          # Build desensitization plugin
-make plugin-dpanonymizer             # Build differential privacy plugin
-make plugin-proto                    # Generate plugin protobuf code
-make plugin-test                     # Run all plugin tests
-make plugin-example-desensitization  # Run desensitization example
-make plugin-example-dpanonymizer     # Run differential privacy example
+# Development
+make dev                 # Show instructions for starting dev servers
+make server-dev          # Start backend development server
+make web-dev             # Start frontend development server
 
-# Full stack
-make install             # Install all dependencies
-make build               # Build everything
+# Build
+make build               # Build everything (backend + frontend + plugins)
+make plugin-build        # Build all plugins only
+
+# Code Generation
+make generate            # Generate all code (API docs + Frontend client + Plugin protocol)
+make swagger             # Generate Swagger/OpenAPI documentation only
 ```
 
 ### Creating a New Plugin
@@ -373,7 +361,13 @@ func main() {
 
 4. **Build and install**:
 ```bash
-go build -o ../../host-server/bin/plugins/my-plugin/my-plugin_v1.0.0
+# Create plugin directory
+mkdir -p ../../host-server/bin/plugins/builtin/data-processing/my-plugin/v1.0.0/darwin_arm64
+
+# Build plugin
+go build -o ../../host-server/bin/plugins/builtin/data-processing/my-plugin/v1.0.0/darwin_arm64/plugin .
+
+# Or add to Makefile for easier building
 ```
 
 ### Updating API Documentation
@@ -381,9 +375,8 @@ go build -o ../../host-server/bin/plugins/my-plugin/my-plugin_v1.0.0
 After modifying controller comments:
 
 ```bash
-cd host-server
-swag init -g cmd/server/main.go -o docs
-# Or: make swagger
+make swagger
+# Or: make generate (generates all code including API docs)
 ```
 
 ## 🧪 Testing
