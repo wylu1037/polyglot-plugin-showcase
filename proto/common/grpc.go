@@ -41,7 +41,7 @@ var Handshake = plugin.HandshakeConfig{
 
 // PluginGRPCPlugin is the implementation of plugin.GRPCPlugin
 type PluginGRPCPlugin struct {
-	plugin.Plugin                 // Embedded plugin.Plugin to satisfy the interface
+	plugin.Plugin                 // Embedded plugin.Plugin to satisfy the plugin.PluginSet
 	Impl          PluginInterface // Impl Injection
 }
 

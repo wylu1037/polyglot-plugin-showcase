@@ -100,9 +100,9 @@ func (m *Manager) LoadPlugin(pluginID uint, pluginPath string, pluginName string
 	}
 	m.mu.RUnlock()
 
-	pluginInterfaceInfo, err := m.registry.GetPluginInterfaceInfo(pluginName)
+	pluginConfig, err := m.registry.GetPluginConfig(pluginName)
 	if err != nil {
-		return fmt.Errorf("failed to get plugin interface info for '%s': %w", pluginName, err)
+		return fmt.Errorf("failed to get plugin config for '%s': %w", pluginName, err)
 	}
 
 	if err := m.validatePluginBinary(pluginPath); err != nil {
@@ -110,8 +110,8 @@ func (m *Manager) LoadPlugin(pluginID uint, pluginPath string, pluginName string
 	}
 
 	client := plugin.NewClient(&plugin.ClientConfig{
-		HandshakeConfig: pluginInterfaceInfo.HandshakeConfig,
-		Plugins:         pluginInterfaceInfo.PluginMap,
+		HandshakeConfig: pluginConfig.HandshakeConfig,
+		Plugins:         pluginConfig.PluginMap,
 		Cmd:             exec.Command(pluginPath),
 		AllowedProtocols: []plugin.Protocol{
 			plugin.ProtocolGRPC,
@@ -125,10 +125,10 @@ func (m *Manager) LoadPlugin(pluginID uint, pluginPath string, pluginName string
 		return fmt.Errorf("failed to connect to plugin: %w", err)
 	}
 
-	raw, err := rpcClient.Dispense(pluginInterfaceInfo.PluginName)
+	raw, err := rpcClient.Dispense(pluginConfig.PluginName)
 	if err != nil {
 		client.Kill()
-		return fmt.Errorf("failed to dispense plugin interface '%s': %w", pluginInterfaceInfo.PluginName, err)
+		return fmt.Errorf("failed to dispense plugin interface '%s': %w", pluginConfig.PluginName, err)
 	}
 
 	if err := m.verifyProtocolVersion(raw); err != nil {

@@ -40,6 +40,7 @@ func main() {
 		},
 		Cmd:              exec.Command(absPath),
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
+		AutoMTLS:         true,
 	})
 	defer client.Kill()
 

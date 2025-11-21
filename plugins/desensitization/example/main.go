@@ -21,6 +21,7 @@ func main() {
 		AllowedProtocols: []plugin.Protocol{
 			plugin.ProtocolGRPC,
 		},
+		AutoMTLS: true,
 	})
 	defer client.Kill()
 
